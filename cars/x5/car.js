@@ -240,7 +240,19 @@ window.CAR = {
   setupName: 'Driving modes',
   cabin: { eye: [0.4, 1.33, -0.12], doorway: [2.0, 1.35, 0.2], look: [0.2, 1.12, 0.6], light: [0.1, 1.45, -0.1],
     cluster: { pos: [0.4, 1.19, 0.63], rot: [-0.15, Math.PI, 0], size: [0.3, 0.115] },
-    screen: { pos: [0.02, 1.215, 0.66], rot: [-0.12, Math.PI + 0.12, 0], size: [0.31, 0.12] } },
+    // facelift look (reference: 2023+ X5 interior): one curved widescreen, open-pore wood, chrome line,
+    // blue ambient strip with X5 chevrons, wood console, BMW roundel on the wheel, blue footwell light
+    curved: { center: [0.19, 1.19, -0.62], radius: 1.2, arc: 0.72, height: 0.14, rot: [0, 0, 0] },
+    trims: [
+      { mat: 'wood',    from: [-0.76, 1.025, 0.1], to: [0.76, 1.025, 0.1], dir: [0, 0, 1], h: 0.05, steps: 80, repeat: 3 },
+      { mat: 'chrome',  from: [-0.76, 1.058, 0.1], to: [0.76, 1.058, 0.1], dir: [0, 0, 1], h: 0.007, steps: 80 },
+      { mat: 'ambient', from: [-0.76, 0.992, 0.1], to: [0.76, 0.992, 0.1], dir: [0, 0, 1], h: 0.012, steps: 80 },
+      { mat: 'wood',    from: [0, 1.3, 0.08], to: [0, 1.3, 0.34], dir: [0, -1, 0], across: [1, 0, 0], h: 0.13, steps: 24, rows: 6 },
+      { mat: 'chrome',  from: [0.075, 1.3, 0.06], to: [0.075, 1.3, 0.36], dir: [0, -1, 0], across: [1, 0, 0], h: 0.006, steps: 24 },
+      { mat: 'chrome',  from: [-0.075, 1.3, 0.06], to: [-0.075, 1.3, 0.36], dir: [0, -1, 0], across: [1, 0, 0], h: 0.006, steps: 24 },
+    ],
+    roundel: { at: [0.398, 1.093, 0.395], r: 0.021 },
+    ambient: [0.3, 0.55, 0.3] },
   lamps: [[0.72, 0.85, 2.28], [-0.72, 0.85, 2.28]],
   plates: { badge: 'X5', place: [['shell', [0, 0.514, 2.472], 0, 0], ['trunk', [0, 0.946, -2.353], Math.PI, 0]] }, // on top of the model's own plates
   drive: { gears: [5.0, 3.2, 2.143, 1.72, 1.314, 1.0, 0.822, 0.64], final: 3.15, tyreR: 0.375, mass: 2164, redline: 7000, powerPS: 340, peakRpm: 5500, topKmh: 243,

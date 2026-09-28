@@ -1635,6 +1635,7 @@ function updateDoorAndCabin(dt) {
     door.inner.position.copy(d).sub(d.clone().applyAxisAngle(V3(0, 1, 0), a));
   }
   cabinLight.intensity = insideAmt * 1.6;
+  ambientLight.intensity = insideAmt * 0.6;
   document.body.classList.toggle('inside', insideAmt > 0.95);
   if (insideWanted && Math.abs(scrollY - insideScroll) > 160) setInside(false);
 }
@@ -2028,8 +2029,45 @@ clusterScreen.position.set(...CAR.cabin.cluster.pos);
 clusterScreen.rotation.set(...CAR.cabin.cluster.rot); // faces the driver, top leaning away
 car.add(clusterScreen);
 let clusterFrame = 0;
+function drawCurved() {
+  const c = screenCtx, W = 2048, H = 300, now = new Date();
+  const rpm = sim.on ? sim.rpm : engineSound.rpm, running = engineSound.on && rpm > 300, speed = sim.on ? Math.round(sim.v * 3.6) : 0;
+  const bg = c.createLinearGradient(0, 0, W, 0); bg.addColorStop(0, '#0a1422'); bg.addColorStop(0.45, '#08101c'); bg.addColorStop(1, '#141019');
+  c.fillStyle = bg; c.fillRect(0, 0, W, H);
+  // cluster: two hexagonal gauges (speed | rpm) like the current BMW Curved Display
+  const hex = (cx, v, max, label, val) => {
+    c.save(); c.translate(cx, H / 2);
+    c.strokeStyle = 'rgba(120,170,230,0.35)'; c.lineWidth = 3; c.beginPath();
+    for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; c.lineTo(Math.cos(a) * 120, Math.sin(a) * 120); } c.closePath(); c.stroke();
+    const f = Math.min(1, v / max); c.strokeStyle = '#5fb4ff'; c.lineWidth = 8; c.beginPath(); c.arc(0, 0, 104, Math.PI * 0.75, Math.PI * (0.75 + 1.5 * f)); c.stroke();
+    c.fillStyle = '#fff'; c.textAlign = 'center'; c.font = '700 64px Archivo, sans-serif'; c.fillText(val, 0, 20);
+    c.fillStyle = '#8fa3bf'; c.font = '500 22px Inter, sans-serif'; c.fillText(label, 0, 60); c.restore();
+  };
+  hex(230, speed, 250, 'km/h', String(speed));
+  hex(640, rpm, 7000, 'rpm', running ? String(Math.round(rpm / 100) / 10) + 'k' : 'P');
+  c.fillStyle = '#8fa3bf'; c.textAlign = 'center'; c.font = '600 26px Inter, sans-serif'; c.fillText(running ? (sim.on ? 'D' + sim.gear : 'D') : 'READY', 435, 160);
+  // infotainment: widgets like BMW OS 8
+  c.textAlign = 'left';
+  const card = (x, w, title, sub, draw) => { c.fillStyle = 'rgba(255,255,255,0.07)'; c.beginPath(); c.roundRect(x, 40, w, 220, 18); c.fill(); c.fillStyle = '#fff'; c.font = '600 28px Inter'; c.fillText(title, x + 22, 82); c.fillStyle = '#8fa3bf'; c.font = '500 20px Inter'; c.fillText(sub, x + 22, 112); draw && draw(x, w); };
+  card(940, 400, 'Navigation', DEALER.city ? 'To ' + DEALER.name : 'Destination', x => { c.strokeStyle = '#2f6fd6'; c.lineWidth = 7; c.beginPath(); c.moveTo(x + 40, 240); c.bezierCurveTo(x + 150, 170, x + 220, 220, x + 360, 140); c.stroke(); });
+  card(1360, 300, 'Now playing', '97.1 FM', x => { const g = c.createLinearGradient(x + 22, 130, x + 110, 230); g.addColorStop(0, '#c9a36a'); g.addColorStop(1, '#3a2a4a'); c.fillStyle = g; c.beginPath(); c.moveTo(x + 66, 130); c.lineTo(x + 116, 225); c.lineTo(x + 16, 225); c.fill(); });
+  card(1680, 340, now.toTimeString().slice(0, 5), '22°C  ·  ' + (DEALER.city || ''), x => { c.fillStyle = '#8fa3bf'; c.font = '500 20px Inter'; c.fillText('Range 480 km', x + 22, 230); });
+  screenTex.needsUpdate = true;
+}
 let screenMesh = null, screenCtx = null, screenTex = null;
-if (CAR.cabin.screen) {
+if (CAR.cabin.curved) { // facelift-style curved display: cluster on the left, infotainment on the right
+  const C = CAR.cabin.curved, cv = document.createElement('canvas'); cv.width = 2048; cv.height = 300;
+  screenCtx = cv.getContext('2d');
+  screenTex = new THREE.CanvasTexture(cv); screenTex.colorSpace = THREE.SRGBColorSpace;
+  const geo = new THREE.CylinderGeometry(C.radius, C.radius, C.height, 48, 1, true, -C.arc / 2, C.arc);
+  screenMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false, side: THREE.DoubleSide }));
+  screenMesh.position.set(...C.center); screenMesh.rotation.set(...C.rot);
+  screenMesh.scale.x = -1; // read correctly from inside the curve
+  car.add(screenMesh);
+  const bezel = new THREE.Mesh(new THREE.CylinderGeometry(C.radius + 0.004, C.radius + 0.004, C.height + 0.02, 48, 1, true, -C.arc / 2 - 0.01, C.arc + 0.02), new THREE.MeshPhysicalMaterial({ color: '#050505', roughness: 0.15, clearcoat: 1, side: THREE.DoubleSide }));
+  screenMesh.add(bezel);
+  clusterScreen.visible = false; clusterScreen.userData.disabled = true;
+} else if (CAR.cabin.screen) {
   const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 400;
   screenCtx = cv.getContext('2d');
   screenTex = new THREE.CanvasTexture(cv); screenTex.colorSpace = THREE.SRGBColorSpace;
@@ -2037,7 +2075,8 @@ if (CAR.cabin.screen) {
   screenMesh.position.set(...CAR.cabin.screen.pos); screenMesh.rotation.set(...CAR.cabin.screen.rot);
   car.add(screenMesh);
 }
-function drawScreen() { // BMW-style home screen: map tile, media tile, vehicle tile, clock
+function drawScreen() {
+  if (CAR.cabin.curved) return drawCurved(); // BMW-style home screen: map tile, media tile, vehicle tile, clock
   const c = screenCtx, W = 1024, H = 400, now = new Date();
   const g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#0d1420'); g.addColorStop(1, '#05070b');
   c.fillStyle = g; c.fillRect(0, 0, W, H);
@@ -2090,8 +2129,8 @@ function drawCluster() {
   clusterTex.needsUpdate = true;
 }
 function updateCluster() {
-  clusterScreen.visible = insideAmt > 0.3;
-  if (screenMesh) { screenMesh.visible = clusterScreen.visible; if (screenMesh.visible && clusterFrame % 10 === 0) drawScreen(); }
+  clusterScreen.visible = insideAmt > 0.3 && !clusterScreen.userData.disabled;
+  if (screenMesh) { screenMesh.visible = insideAmt > 0.3; if (screenMesh.visible && clusterFrame % 10 === 0) drawScreen(); }
   if (!clusterScreen.visible || (clusterFrame++ % 2)) return; // ~30 fps is plenty
   drawCluster();
 }
@@ -2333,6 +2372,92 @@ addEventListener('resize', () => {
 addEventListener('load', measure);
 
 /* ============================================================
+   Cabin details (for models whose interior has no textures):
+   strips and patches are ray-cast onto the real surfaces, so wood,
+   chrome and ambient-light trims hug the dashboard and console.
+   ============================================================ */
+const woodTex = canvasTexture(1024, 128, (c, w, h) => {
+  c.fillStyle = '#2a1a12'; c.fillRect(0, 0, w, h);
+  for (let i = 0; i < 260; i++) { // open-pore grain: long dark and light streaks
+    const y = Math.random() * h, l = 80 + Math.random() * 500, x = Math.random() * w;
+    c.strokeStyle = Math.random() < 0.5 ? `rgba(10,5,2,${0.25 + Math.random() * 0.4})` : `rgba(120,80,55,${0.08 + Math.random() * 0.15})`;
+    c.lineWidth = 0.5 + Math.random() * 2.2;
+    c.beginPath(); c.moveTo(x, y); c.bezierCurveTo(x + l * 0.3, y + 2, x + l * 0.6, y - 2, x + l, y + (Math.random() - 0.5) * 4); c.stroke();
+  }
+});
+woodTex.wrapS = THREE.RepeatWrapping;
+const ambientTex = canvasTexture(1024, 64, (c, w, h) => {
+  c.fillStyle = '#0a1a3a'; c.fillRect(0, 0, w, h);
+  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(90,160,255,0)'); g.addColorStop(0.5, 'rgba(120,190,255,0.9)'); g.addColorStop(1, 'rgba(90,160,255,0)');
+  c.fillStyle = g; c.fillRect(0, h * 0.35, w, h * 0.3);
+  c.fillStyle = '#9fd0ff';
+  for (let i = 0; i < 22; i++) { const x = w * 0.42 + i * 22; c.beginPath(); c.moveTo(x, 20); c.lineTo(x + 9, 32); c.lineTo(x, 44); c.lineTo(x + 5, 44); c.lineTo(x + 14, 32); c.lineTo(x + 5, 20); c.fill(); }
+  c.font = 'italic 800 34px Archivo, Arial Black, sans-serif'; c.fillText(CAR.short || '', w * 0.42 + 22 * 22 + 12, 45);
+});
+const TRIM_MATS = {
+  wood: () => new THREE.MeshPhysicalMaterial({ map: woodTex, roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.08 }),
+  chrome: () => new THREE.MeshStandardMaterial({ color: '#d7dbe0', metalness: 1, roughness: 0.12 }),
+  ambient: () => new THREE.MeshBasicMaterial({ map: ambientTex, toneMapped: false }),
+  pianoBlack: () => new THREE.MeshPhysicalMaterial({ color: '#050505', roughness: 0.1, clearcoat: 1 }),
+};
+function buildCabinTrims() {
+  const trims = CAR.cabin.trims || [];
+  if (!trims.length) return;
+  const targets = [...groupsFor('cabin'), ...groupsFor('seats')].flatMap(pg => pg.meshes);
+  const saveYaw = carYaw.rotation.y; carYaw.rotation.y = 0; car.position.set(0, 0, 0); scene.updateMatrixWorld(true);
+  const rc = new THREE.Raycaster(), hitAt = (o, d) => { rc.set(o, d); const h = rc.intersectObjects(targets, false)[0]; return h ? { p: h.point.clone(), n: h.face.normal.clone().transformDirection(h.object.matrixWorld) } : null; };
+  const host = PARTGROUPS.cabin ? PARTGROUPS.cabin : null, off = host ? host.pivot : V3();
+  for (const t of trims) {
+    const mat = TRIM_MATS[t.mat]();
+    const dir = V3(...t.dir).normalize(), N = t.steps || 48, pos = [], uv = [], idx = [];
+    // a strip = a row of rays along one axis, each hit gives a short segment across (height h)
+    const rows = t.rows || 2;
+    for (let i = 0; i <= N; i++) {
+      const a = i / N;
+      for (let r = 0; r < rows; r++) {
+        const b = rows === 1 ? 0 : r / (rows - 1);
+        const o = V3(...t.from).lerp(V3(...t.to), a).add(V3(...(t.across || [0, 1, 0])).multiplyScalar((b - 0.5) * t.h));
+        const hit = hitAt(o, dir);
+        const p = hit ? hit.p.addScaledVector(hit.n, 0.004) : null;
+        pos.push(...(p ? p.sub(off).toArray() : [NaN, NaN, NaN]));
+        uv.push(a * (t.repeat || 1), b);
+      }
+    }
+    for (let i = 0; i < N; i++) for (let r = 0; r < rows - 1; r++) {
+      const q = i * rows + r, A = q, B = q + rows, C = q + rows + 1, D = q + 1;
+      if ([A, B, C, D].some(k => Number.isNaN(pos[k * 3]))) continue;
+      const P = k => V3(pos[k * 3], pos[k * 3 + 1], pos[k * 3 + 2]);
+      if (P(A).distanceTo(P(B)) > (t.maxGap || 0.06) || P(D).distanceTo(P(C)) > (t.maxGap || 0.06)) continue; // skip over vents / gaps
+      idx.push(A, B, C, A, C, D);
+    }
+    for (let k = 0; k < pos.length; k++) if (Number.isNaN(pos[k])) pos[k] = 0;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx); g.computeVertexNormals();
+    mat.side = THREE.DoubleSide;
+    const m = new THREE.Mesh(g, mat);
+    (host ? host.inner : car).add(m);
+    if (host) host.meshes.push(m);
+  }
+  // roundel on the steering-wheel hub, placed by aiming from the driver's eye at the wheel centre
+  if (CAR.cabin.roundel && CAR.emblemTexture) {
+    const eye = V3(...CAR.cabin.eye), c = V3(...CAR.cabin.roundel.at), hit = hitAt(eye, c.clone().sub(eye).normalize());
+    if (hit) {
+      const tex = new THREE.TextureLoader().load(CAR.emblemTexture); tex.colorSpace = THREE.SRGBColorSpace;
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(CAR.cabin.roundel.r, 48), new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.2, clearcoat: 1, metalness: 0.3 }));
+      disc.position.copy(hit.p.addScaledVector(hit.n, 0.006)).sub(off);
+      disc.lookAt(disc.position.clone().add(hit.n));
+      (host ? host.inner : car).add(disc);
+    }
+  }
+  carYaw.rotation.y = saveYaw;
+}
+// blue footwell / ambient light while you sit inside
+const ambientLight = new THREE.PointLight(0x3a7bff, 0, 1.6, 1.4);
+if (CAR.cabin.ambient) { ambientLight.position.set(...CAR.cabin.ambient); car.add(ambientLight); ambientLight.layers.enable(2); }
+
+/* ============================================================
    Page text for this car + dealer details
    ============================================================ */
 function fillTexts() {
@@ -2422,6 +2547,7 @@ async function init() {
   buildParts(gltf.scene);
   setupExplode();
   prepareConfigMaterials();
+  buildCabinTrims();
   prepareLights();
   addPlates();
   applySeat(params.get('seats') in SEAT_COLORS ? params.get('seats') : CAR.defaults.seats);
