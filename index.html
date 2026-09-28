@@ -1786,7 +1786,7 @@ const plateTex = canvasTexture(1040, 220, (c, w, h) => {
 function addPlates() {
   const mat = new THREE.MeshStandardMaterial({ map: plateTex, roughness: 0.35, metalness: 0.1 });
   const geo = new THREE.PlaneGeometry(0.52, 0.11);
-  [['front', [0, 0.305, 2.405], 0, -0.1], ['rear', [0, 0.36, -2.382], Math.PI, 0.05]].forEach(([key, at, ry, rx]) => {
+  [['front', [0, 0.305, 2.405], 0, -0.1], ['rear', [0, 0.79, -2.3], Math.PI, 0]].forEach(([key, at, ry, rx]) => {
     const pg = PARTGROUPS[key];
     const plate = new THREE.Mesh(geo, mat);
     plate.position.set(...at).sub(pg ? pg.pivot : V3());
