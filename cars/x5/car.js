@@ -4,15 +4,15 @@ window.CAR = {
   title: 'X5 xDrive40i · Concept Experience',
   model: { credit: '3D model: <a href="https://github.com/bmwcarit/digital-car-3d" target="_blank" rel="noopener">"BMW X5 (G05)"</a> by BMW Car IT GmbH, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>' },
   copy: {
-    lead: 'Seven seats of space, 340 PS and xDrive on every surface. Open the tailgate, lift out any part, step inside and drive it.',
+    lead: 'Seven seats of space, 340 PS and xDrive on every surface. Open the bonnet, lift out any engine part, step inside and drive it.',
     heroStats: [['340', 'PS'], ['450', 'Nm'], ['5.5', 's 0–100'], ['243', 'km/h']],
     design: `<p class="num">01</p><p class="kicker">Design</p>
       <h2>Presence. <em>Precision.</em></h2>
       <p class="body">The largest kidney grille yet framed in chrome, slim laser-sharp headlights, and a clean shoulder line that runs from the lights to the L-shaped tail lamps. Move over the car to highlight any part; click it to lift it out.</p>
       <div class="stats"><div class="stat"><b>4.92<small>m</small></b><span>Length</span></div><div class="stat"><b>2.98<small>m</small></b><span>Wheelbase</span></div><div class="stat"><b>1.75<small>m</small></b><span>Height</span></div></div>`,
     engine: `<p class="num">02</p><p class="kicker">Powertrain</p>
-      <h2>Silky six. <em>Every wheel driven.</em></h2>
-      <p class="body">The B58 3.0-litre straight-six with a twin-scroll turbo and 48-volt mild-hybrid assist, paired with the 8-speed Steptronic and intelligent xDrive all-wheel drive that shifts power between the axles in milliseconds.</p>
+      <h2>The bonnet opens. <em>Meet the B58.</em></h2>
+      <p class="body">A 3.0-litre straight-six with a twin-scroll turbo and 48-volt mild-hybrid assist, paired with the 8-speed Steptronic and xDrive all-wheel drive. Click the glowing points to explore the engine, turbo, intake, cooling pack and fluids.</p>
       <div class="stats"><div class="stat"><b>340<small>PS</small></b><span>Output</span></div><div class="stat"><b>450<small>Nm</small></b><span>Torque</span></div><div class="stat"><b>AWD</b><span>xDrive</span></div></div>`,
     wheels: `<p class="num">04</p><p class="kicker">Wheels &amp; brakes</p>
       <h2>Big wheels. <em>Calm control.</em></h2>
@@ -84,19 +84,29 @@ window.CAR = {
     if (/Brake_Discs/.test(n)) return std({ color: '#8b8f93', metalness: 1, roughness: 0.45 });
     if (/Emblem/.test(n)) return phys({ map: api.texture(window.CAR.emblemTexture), metalness: 0.5, roughness: 0.25, clearcoat: 1 });
     if (/LicensePlate/.test(n)) return std({ color: '#ffffff', roughness: 0.4 });
+    if (/I_upholstery/.test(n)) return phys({ color: '#8e5230', roughness: 0.55, sheen: 0.6, sheenRoughness: 0.5, sheenColor: '#ffffff', side });  // Vernasca leather, follows the seat colour
+    if (/I_dashboard/.test(n)) return phys({ color: '#1a1918', roughness: 0.62, sheen: 0.4, sheenRoughness: 0.6, sheenColor: '#777777', side });  // soft-touch dashboard
+    if (/I_door/.test(n)) return phys({ color: '#1f1d1c', roughness: 0.6, sheen: 0.4, sheenRoughness: 0.6, sheenColor: '#777777', side });
+    if (/I_wheel/.test(n)) return phys({ color: '#141414', roughness: 0.5, sheen: 0.5, sheenRoughness: 0.5, sheenColor: '#888888', side });  // leather wheel
+    if (/I_headliner/.test(n)) return std({ color: '#2e2c2a', roughness: 0.9, side });                           // anthracite headliner
+    if (/I_dark/.test(n)) return std({ color: '#262422', roughness: 0.85, side });                                 // headliner, carpet, trims
     if (/I_common_general/.test(n)) return std({ color: '#3a3533', roughness: 0.7, side });
+    if (n.includes('engine')) return std({ map, metalness: 0.45, roughness: 0.5, side });                         // the fitted engine bay
     if (/none/.test(n)) return std({ color: '#050505', roughness: 1, side });
     return null;
   },
   seatShell: null,
   caliperMaterial: 'Rim_Paint_gray',
-  lid: { part: 'trunk', angle: 1.25, open: 'Open tailgate', close: 'Close tailgate', engineBay: false },
-  bayView: { az: 2.72, el: 0.3, dist: 6.4, t: [0, 1.05, -1.9] },
+  lid: { part: 'hood', angle: -0.9, open: 'Open bonnet', close: 'Close bonnet', engineBay: true },
+  lid2: { part: 'trunk', angle: 1.25 },           // the tailgate opens when you click it
+  hideParts: ['bayvoid'],                          // BMW's flat cover over the empty bay, replaced by the engine
+  upholstery: 'I_upholstery',                      // every leather surface follows the seat colour
+  bayView: { az: 0.38, el: 0.72, dist: 5.4, t: [0, 0.95, 1.6] },
   // camera views per section (only what differs from the M4 defaults; the X5 is taller)
   views: [
     { dist: 11, t: [0, 0.82, 0] },
     { dist: 9.4, t: [0, 0.8, 0] },
-    { az: 0.52, el: 0.12, dist: 7.6, t: [0, 0.85, 1.1], hood: 0 },
+    { az: 0.38, el: 0.72, dist: 5.4, t: [0, 0.95, 1.6], hood: 1 },
     { dist: 17, t: [0, 1.55, 0] },
     { dist: 3.9, t: [0.91, 0.38, 1.58] },
     { dist: 10.6, t: [0, 0.82, 0] },
@@ -138,10 +148,31 @@ window.CAR = {
       text: 'The long aluminium bonnet with its sculpted power domes covers the B58 straight-six.',
       made: 'Aluminium', specs: [['Material', 'Aluminium'], ['Engine', 'B58 3.0 L'], ['Output', '340 PS'], ['Hinge', 'Rear']] },
   },
-  spots: {},
-  tour: ['trunk', 'hood', 'wheels', 'brakes', 'headlights', 'taillights', 'doors', 'seats', 'cabin', 'glass', 'shell'],
-  photos: { shell: 'front', hood: 'front', headlights: 'mside', taillights: 'rear', trunk: 'rear', doors: 'side', glass: 'interior', seats: 'seats', cabin: 'cockpit', wheels: 'front', brakes: 'side' },
+  spots: {
+    s58:     { fixed: true, at: [0.12, 1.12, 1.5], r: [0.5, 0.25, 0.45], kicker: 'Powertrain', name: 'B58 straight-six', view: [0.25, 1, 0.55],
+      text: 'The 3.0-litre straight-six under its engine cover. Six cylinders in a row give it its smoothness; an aluminium closed-deck block keeps it strong and light.',
+      made: 'Aluminium closed-deck block and head, forged crankshaft', specs: [['Output', '340 PS'], ['Torque', '450 Nm'], ['Displacement', '2,998 cc'], ['Bore × stroke', '82 × 94.6 mm']] },
+    turbo:   { at: [0.4, 0.95, 1.55], r: [0.3, 0.25, 0.4], kicker: 'Powertrain', name: 'Twin-scroll turbocharger', view: [0.9, 1, 0.4],
+      text: 'One twin-scroll turbo, fed by two separate exhaust channels (cylinders 1–3 and 4–6), so it spools quickly and pulls hard from 1,500 rpm.',
+      made: 'Heat-resistant cast-steel housing, nickel-alloy turbine', specs: [['Units', '1'], ['Type', 'Twin-scroll'], ['Full torque from', '1,500 rpm'], ['Cooling', 'Water-cooled']] },
+    intake:  { fixed: true, at: [-0.45, 1.02, 1.9], r: [0.35, 0.2, 0.4], kicker: 'Powertrain', name: 'Air intake & charge cooling', view: [-0.5, 1, 0.9],
+      text: 'Fresh air enters behind the kidney grille, is compressed by the turbo and cooled by an intercooler built into the intake plenum before it reaches the cylinders.',
+      made: 'Glass-fibre composite, silicone hoses, aluminium', specs: [['Intercooler', 'In the plenum'], ['Path', 'Grille → turbo'], ['Filter', 'Dry element'], ['Mild hybrid', '48 V']] },
+    cooling: { at: [0, 0.95, 2.15], r: [0.6, 0.2, 0.25], kicker: 'Powertrain', name: 'Cooling pack', view: [0.2, 1, 1],
+      text: 'Radiators behind the grille, with active air flaps that close at speed to cut drag and open when the engine needs cooling, for example when towing.',
+      made: 'Aluminium cores, glass-fibre-reinforced tanks', specs: [['Air flaps', 'Active'], ['Towing', 'Up to 2,700 kg'], ['Fan', 'Electric'], ['Fed by', 'Kidney grille']] },
+    brace:   { fixed: true, at: [0.62, 1.1, 1.22], r: [0.75, 0.15, 0.2], kicker: 'Chassis', name: 'Suspension towers & brace', view: [0.2, 1, 0.9],
+      text: 'The front suspension towers carry the double-wishbone front axle; a brace ties them together for precise steering.',
+      made: 'Aluminium', specs: [['Front axle', 'Double wishbone'], ['Springs', 'Air (optional)'], ['Dampers', 'Adaptive'], ['Material', 'Aluminium']] },
+    fluids:  { fixed: true, at: [-0.62, 1.05, 1.32], r: [0.25, 0.15, 0.3], kicker: 'Service', name: 'Fluid reservoirs', view: [-0.6, 1, 0.5],
+      text: 'Coolant and washer reservoirs with colour-coded caps, easy to reach for servicing.',
+      made: 'Polypropylene tanks', specs: [['Coolant', 'Closed loop'], ['Caps', 'Colour-coded'], ['Access', 'Tool-free'], ['Checks', 'Sensor']] },
+  },
+  tour: ['s58', 'turbo', 'intake', 'cooling', 'brace', 'fluids', 'trunk', 'hood', 'wheels', 'brakes', 'headlights', 'taillights', 'doors', 'seats', 'cabin', 'glass', 'shell'],
+  photos: { s58: 'engine', turbo: 'engine2', intake: 'engine2', cooling: 'front', brace: 'engine', fluids: 'engine2', hood: 'engine', shell: 'front', headlights: 'mside', taillights: 'rear', trunk: 'rear', doors: 'side', glass: 'interior', seats: 'seats', cabin: 'cockpit', wheels: 'front', brakes: 'side' },
   credits: {
+    engine: ['Lightburst', 'CC BY-SA 4.0', 'File:2018_BMW_B58_Turbo_engine.jpg'],
+    engine2: ['M3C30', 'CC BY-SA 4.0', 'File:G26_M440i_engine_B58.jpg'],
     front: ['Mr.choppers', 'CC BY-SA 3.0', 'File:2020_BMW_X5_xDrive_40i,_front_left.jpg'],
     rear: ['Kevauto', 'CC BY-SA 4.0', 'File:2019_BMW_X5_xDrive40i_rear_3.24.19.jpg'],
     interior: ['User3204', 'CC0', 'File:2020_BMW_X5_(G05)_interior.jpg'],
@@ -154,6 +185,7 @@ window.CAR = {
     ['Tailgate', 'Electric, split', 'trunk', [0, 0.2, 0], 'l'],
     ['Glasshouse', 'Acoustic glass', 'glass', [0.5, 0.2, 0.6], 'r'],
     ['Bonnet', 'Aluminium', 'hood', [0.3, 0.1, 0.4], 'r'],
+    ['B58 engine', '3.0 L · 340 PS', 'eng:core', [0.4, -0.15, 0.3], 'r'],
     ['Front doors', 'Soft-close', 'doorL', [0.1, 0.3, 0], 'r'],
     ['LED headlights', 'Adaptive', 'headlights', [-0.6, 0.05, 0], 'l'],
     ['Seats', 'Vernasca leather', 'seats', [0.4, 0.3, 0], 'r'],
@@ -207,7 +239,8 @@ window.CAR = {
   ],
   setupName: 'Driving modes',
   cabin: { eye: [0.4, 1.33, -0.12], doorway: [2.0, 1.35, 0.2], look: [0.2, 1.12, 0.6], light: [0.1, 1.45, -0.1],
-    cluster: { pos: [0.4, 1.19, 0.63], rot: [-0.15, Math.PI, 0], size: [0.3, 0.115] } },
+    cluster: { pos: [0.4, 1.19, 0.63], rot: [-0.15, Math.PI, 0], size: [0.3, 0.115] },
+    screen: { pos: [0.02, 1.215, 0.66], rot: [-0.12, Math.PI + 0.12, 0], size: [0.31, 0.12] } },
   lamps: [[0.72, 0.85, 2.28], [-0.72, 0.85, 2.28]],
   plates: { badge: 'X5', place: [['shell', [0, 0.514, 2.472], 0, 0], ['trunk', [0, 0.946, -2.353], Math.PI, 0]] }, // on top of the model's own plates
   drive: { gears: [5.0, 3.2, 2.143, 1.72, 1.314, 1.0, 0.822, 0.64], final: 3.15, tyreR: 0.375, mass: 2164, redline: 7000, powerPS: 340, peakRpm: 5500, topKmh: 243,

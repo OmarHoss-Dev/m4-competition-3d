@@ -947,7 +947,8 @@ function setupExplode() {
     add('brake' + i, [sx * 0.7, 0, 0], 0.3);
   }
   // the engine flies up, and its pieces spread apart so you can see every detail
-  const ec = V3(0, 0.72, 1.5);
+  const ec = ENGINE_BITS.reduce((a, b) => a.add(b.outer.position), V3()).multiplyScalar(1 / Math.max(1, ENGINE_BITS.length));
+  ec.y -= 0.1;
   ENGINE_BITS.forEach((b, i) => {
     const d = b.outer.position.clone().sub(ec);
     d.y = Math.max(0, d.y);
@@ -1006,6 +1007,7 @@ const ndc = new THREE.Vector2(-10, -10);
 const mouse = { x: 0, y: 0, tx: 0, ty: 0, px: 0, py: 0 };
 let pointerInside = false, pointerType = 'mouse', started = false, ready = false;
 let hoverKey = null, hoverPoint = V3(), focusKey = null, focusScroll = 0;
+let lid2Wanted = false, lid2Open = 0;
 let hoodWanted = false, hoodOpen = 0, explode = 0, btnExplode = 0, btnTarget = 0, driveOn = false, drive = 0, liveryOn = true;
 const tipEl = $('#tip');
 
@@ -1034,7 +1036,7 @@ function setHover(key) {
   hoverMeshes.forEach(m => m.layers.enable(2));
   if (key) {
     $('b', tipEl).textContent = INFO[key].name;
-    $('#tipHint').textContent = key === LID.part ? (hoodWanted ? LID.close : LID.open) : 'Click to inspect';
+    $('#tipHint').textContent = key === LID.part ? (hoodWanted ? LID.close : LID.open) : CAR.lid2 && key === CAR.lid2.part ? (lid2Wanted ? 'Click to close' : 'Click to open') : 'Click to inspect';
   }
   tipEl.classList.toggle('on', !!key);
 }
@@ -1057,6 +1059,7 @@ addEventListener('click', e => {
   const hit = pick(new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -((e.clientY / innerHeight) * 2 - 1)));
   if (!hit) return;
   if (hit.key === LID.part) setHood(!hoodWanted);
+  else if (CAR.lid2 && hit.key === CAR.lid2.part) lid2Wanted = !lid2Wanted;
   else setFocus(hit.key);
 });
 addEventListener('keydown', e => {
@@ -1372,7 +1375,11 @@ function prepareConfigMaterials() {
   // the seats get their own copies of the leather material so tinting them leaves the dashboard alone
   // (material names can be merged by compression, so go by part, not by name)
   const carbonShell = new THREE.MeshPhysicalMaterial({ color: '#141518', metalness: 0.35, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.06 });
-  groupsFor('seats').forEach(pg => pg.meshes.forEach(m => {
+  (CAR.hideParts || []).forEach(k => { if (PARTGROUPS[k]) PARTGROUPS[k].outer.visible = false; });
+  if (CAR.upholstery) { // one shared leather material for seats, door inserts and dashboard accents
+    const up = [...matCache.values()].find(m => m.name.includes(CAR.upholstery));
+    if (up) seatMats.push(up);
+  } else groupsFor('seats').forEach(pg => pg.meshes.forEach(m => {
     if (CAR.seatShell && m.material.name.includes(CAR.seatShell)) { m.material = carbonShell; return; } // M Carbon shells: gloss carbon
     if (/none|Plastic|Chrome|Alumin/.test(m.material.name)) return; // only the upholstery is tinted
     m.material = m.material.clone();
@@ -2021,6 +2028,30 @@ clusterScreen.position.set(...CAR.cabin.cluster.pos);
 clusterScreen.rotation.set(...CAR.cabin.cluster.rot); // faces the driver, top leaning away
 car.add(clusterScreen);
 let clusterFrame = 0;
+let screenMesh = null, screenCtx = null, screenTex = null;
+if (CAR.cabin.screen) {
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 400;
+  screenCtx = cv.getContext('2d');
+  screenTex = new THREE.CanvasTexture(cv); screenTex.colorSpace = THREE.SRGBColorSpace;
+  screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(...CAR.cabin.screen.size), new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false }));
+  screenMesh.position.set(...CAR.cabin.screen.pos); screenMesh.rotation.set(...CAR.cabin.screen.rot);
+  car.add(screenMesh);
+}
+function drawScreen() { // BMW-style home screen: map tile, media tile, vehicle tile, clock
+  const c = screenCtx, W = 1024, H = 400, now = new Date();
+  const g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#0d1420'); g.addColorStop(1, '#05070b');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const tile = (x, w, title, draw) => { c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(x, 70, w, 300); c.fillStyle = '#8fa3bf'; c.font = '600 22px Inter, sans-serif'; c.fillText(title, x + 20, 105); draw(x, w); };
+  c.fillStyle = '#fff'; c.font = '600 30px Inter, sans-serif'; c.fillText(now.toTimeString().slice(0, 5), 30, 48);
+  c.fillStyle = '#8fa3bf'; c.font = '500 22px Inter, sans-serif'; c.fillText('22°C  ·  ' + (DEALER.city || ''), 130, 46);
+  tile(20, 440, 'Navigation', x => { c.strokeStyle = '#2f6fd6'; c.lineWidth = 8; c.beginPath(); c.moveTo(x + 60, 340); c.bezierCurveTo(x + 160, 250, x + 250, 300, x + 380, 150); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.12)'; c.lineWidth = 2; for (let i = 0; i < 8; i++) { c.beginPath(); c.moveTo(x + 20, 130 + i * 30); c.lineTo(x + 420, 150 + i * 26); c.stroke(); } });
+  tile(480, 250, 'Media', x => { c.fillStyle = '#2b4ea2'; c.fillRect(x + 20, 125, 90, 90); c.fillStyle = '#fff'; c.font = '600 22px Inter'; c.fillText('Radio', x + 20, 250); c.fillStyle = '#8fa3bf'; c.font = '500 18px Inter'; c.fillText('97.1 FM', x + 20, 280); });
+  const rpm = engineSound.rpm;
+  tile(750, 254, 'Vehicle', x => { c.fillStyle = '#fff'; c.font = '700 44px Archivo, sans-serif'; c.fillText(engineSound.on ? Math.round(rpm / 10) * 10 + '' : 'Ready', x + 20, 190);
+    c.fillStyle = '#8fa3bf'; c.font = '500 18px Inter'; c.fillText(engineSound.on ? 'rpm' : 'Start engine', x + 20, 220); c.fillText('Range 480 km', x + 20, 330); });
+  screenTex.needsUpdate = true;
+}
 function drawCluster() {
   const c = cctx, W = 1024, H = 400;
   const rpm = sim.on ? sim.rpm : engineSound.rpm, running = engineSound.on && rpm > 300;
@@ -2060,6 +2091,7 @@ function drawCluster() {
 }
 function updateCluster() {
   clusterScreen.visible = insideAmt > 0.3;
+  if (screenMesh) { screenMesh.visible = clusterScreen.visible; if (screenMesh.visible && clusterFrame % 10 === 0) drawScreen(); }
   if (!clusterScreen.visible || (clusterFrame++ % 2)) return; // ~30 fps is plenty
   drawCluster();
 }
@@ -2137,6 +2169,10 @@ function frame() {
   hoodOpen = SNAP ? hoodTarget : damp(hoodOpen, hoodTarget, 2.2, dt);
   if (PARTGROUPS[LID.part]) PARTGROUPS[LID.part].inner.rotation.x = easeInOut(clamp(hoodOpen, 0, 1)) * LID.angle;
   bayLight.intensity = LID.engineBay ? hoodOpen * 3 : 0;
+  if (CAR.lid2 && PARTGROUPS[CAR.lid2.part]) {
+    lid2Open = SNAP ? (lid2Wanted ? 1 : 0) : damp(lid2Open, lid2Wanted && explode < 0.02 ? 1 : 0, 2.2, dt);
+    PARTGROUPS[CAR.lid2.part].inner.rotation.x = easeInOut(clamp(lid2Open, 0, 1)) * CAR.lid2.angle;
+  }
   document.body.classList.toggle('bay', hoodOpen > 0.5 && v.hood < 0.5);
 
   // hover (throttled)
@@ -2393,7 +2429,7 @@ async function init() {
   // engine-bay hotspots sit on top of their real components
   Object.entries(SPOTS).forEach(([k, s], i) => {
     const eng = Object.keys(ENG_PART).find(e => ENG_PART[e] === k), pg = PARTGROUPS['eng:' + eng];
-    if (!pg) return;
+    if (!pg || s.fixed) return; // fixed = the car profile placed this hotspot by hand
     const c = pg.box.getCenter(V3());
     spotEls[i].at.set(c.x, pg.box.max.y + 0.03, c.z);
   });

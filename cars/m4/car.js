@@ -101,7 +101,7 @@ window.CAR = {
   s58:     { at: [0.02, 0.97, 1.52], r: [0.5, 0.25, 0.45], kicker: 'Powertrain', name: 'S58 engine', view: [0.25, 1, 0.55],
     text: 'Under the M Power cover sits the 3.0-litre straight-six. Six individual coils fire the cylinders; the cover hides the intake plenum.',
     made: 'Aluminium block and head, magnesium-reinforced cover', specs: [['Output', '510 PS'], ['Torque', '650 Nm'], ['Bore × stroke', '84 × 90 mm'], ['Compression', '9.3:1']] },
-  brace:   { at: [0.2, 0.93, 1.16], r: [0.75, 0.15, 0.2], kicker: 'Chassis', name: 'Strut brace', view: [0.2, 1, 0.9],
+  brace:   { fixed: true, at: [0.62, 0.93, 1.12], r: [0.75, 0.15, 0.2], kicker: 'Chassis', name: 'Strut brace', view: [0.2, 1, 0.9],
     text: 'Bolts the suspension towers to the bulkhead so the front end stays stiff and precise under hard cornering.',
     made: 'Aluminium and carbon fibre', specs: [['Mounts', '3-point'], ['Job', 'Stiffness'], ['Front axle', 'Double-joint'], ['Weight', 'Light']] },
   cooling: { at: [0.0, 0.8, 2.05], r: [0.6, 0.2, 0.25], kicker: 'Powertrain', name: 'Cooling pack', view: [0.2, 1, 1],
