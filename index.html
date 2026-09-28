@@ -1,0 +1,2251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M4 Competition · Concept Experience</title>
+<meta name="description" content="An interactive 3D experience of the M4 Competition: open the bonnet, inspect every part, take it apart.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050607;
+    --ink: #eef1f4;
+    --muted: rgba(238, 241, 244, 0.6);
+    --faint: rgba(238, 241, 244, 0.13);
+    --accent: #5fb4ff;
+    --accent-rgb: 95, 180, 255;
+    --m1: #5fb4ff; --m2: #2b4ea2; --m3: #e2262f;
+    --display: 'Archivo', 'Arial Black', sans-serif;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --gutter: 5.5vw;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; background: var(--bg); }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-weight: 300; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+  #scene { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 1; display: block; }
+  main { position: relative; z-index: 2; pointer-events: none; }
+  main a, main button, .interactive { pointer-events: auto; }
+
+  /* loader */
+  .loader { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; transition: opacity 1.2s ease, visibility 1.2s; }
+  .loader.done { opacity: 0; visibility: hidden; }
+  .loader-mark { font-family: var(--display); font-stretch: 125%; font-weight: 800; font-size: 30px; letter-spacing: .3em; padding-left: .3em; }
+  .mstripes { display: inline-flex; gap: 3px; transform: skewX(-18deg); }
+  .mstripes i { display: block; width: 7px; height: 14px; }
+  .mstripes i:nth-child(1) { background: var(--m1); } .mstripes i:nth-child(2) { background: var(--m2); } .mstripes i:nth-child(3) { background: var(--m3); }
+  .loader-bar { width: 220px; height: 2px; background: var(--faint); overflow: hidden; }
+  .loader-bar span { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--m1), var(--m2), var(--m3)); transform-origin: left; transform: scaleX(0); transition: transform .5s ease; }
+  .loader-status { font-size: 10px; letter-spacing: .28em; text-transform: uppercase; color: var(--muted); }
+
+  /* nav */
+  .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; padding: 24px var(--gutter); transition: padding .5s, background .5s; }
+  .nav.scrolled { padding: 14px var(--gutter); background: rgba(5,6,7,.6); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  .logo { display: flex; align-items: center; gap: 14px; font-family: var(--display); font-stretch: 125%; font-weight: 800; font-size: 17px; letter-spacing: .14em; }
+  .logo small { font-weight: 400; letter-spacing: .3em; font-size: 10px; color: var(--muted); font-family: var(--sans); }
+  .nav-links { display: flex; gap: 32px; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+  .nav-links a:hover { color: var(--ink); }
+  .progress { position: fixed; top: 0; left: 0; height: 2px; width: 100%; z-index: 21; background: linear-gradient(90deg, var(--m1), var(--m2), var(--m3)); transform-origin: left; transform: scaleX(0); }
+
+  /* buttons */
+  .btn { display: inline-flex; align-items: center; gap: 12px; padding: 16px 26px; font-size: 11px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; background: var(--ink); color: #07080a; border: 1px solid var(--ink); transform: skewX(-12deg); transition: background .35s, color .35s, border-color .35s, box-shadow .35s; }
+  .btn > * { transform: skewX(12deg); }
+  .btn:hover { background: var(--accent); border-color: var(--accent); color: #07080a; }
+  .btn.ghost { background: rgba(5,6,7,.45); color: var(--ink); border-color: rgba(238,241,244,.28); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.on { background: var(--accent); border-color: var(--accent); color: #07080a; box-shadow: 0 0 30px rgba(var(--accent-rgb), .35); }
+  .btn.small { padding: 11px 20px; }
+  .btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  .eyebrow, .kicker { font-size: 11px; letter-spacing: .32em; text-transform: uppercase; color: var(--accent); font-weight: 500; transition: color .8s; }
+  h1 { font-family: var(--display); font-stretch: 125%; font-weight: 900; font-size: clamp(84px, 11vw, 190px); line-height: .82; letter-spacing: -.02em; margin: 18px 0 8px; }
+  h1 span { display: block; font-weight: 300; font-size: .26em; letter-spacing: .32em; margin-top: 16px; color: var(--muted); }
+  h2 { font-family: var(--display); font-stretch: 112%; font-weight: 800; font-size: clamp(38px, 4.4vw, 70px); line-height: .98; margin: 14px 0 22px; text-transform: uppercase; }
+  h2 em { font-style: normal; color: var(--accent); transition: color .8s; }
+  .body { color: var(--muted); line-height: 1.75; font-size: 15.5px; }
+  .label { font-size: 10px; letter-spacing: .28em; text-transform: uppercase; color: var(--muted); }
+
+  /* hero */
+  .hero { position: relative; height: 100vh; min-height: 660px; }
+  .hero-copy { position: absolute; left: var(--gutter); top: 50%; transform: translateY(-50%); max-width: 440px; }
+  .lead { color: var(--muted); line-height: 1.75; font-size: 15px; max-width: 360px; margin-top: 22px; }
+  .dock { position: absolute; left: var(--gutter); bottom: 40px; display: flex; flex-wrap: wrap; gap: 14px; z-index: 3; }
+  .paints { position: absolute; right: var(--gutter); bottom: 116px; display: flex; align-items: center; gap: 18px; }
+  .swatches { display: flex; gap: 10px; }
+  .swatch { width: 28px; height: 28px; border-radius: 50%; position: relative; background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.55), transparent 45%), var(--c); box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); transition: transform .3s; }
+  .swatch::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; border: 1px solid transparent; transition: border-color .3s; }
+  .swatch:hover { transform: scale(1.1); }
+  .swatch.active::after { border-color: var(--accent); }
+  .paint-name { font-family: var(--display); font-stretch: 110%; font-weight: 600; font-size: 15px; min-width: 160px; }
+  .livery { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+  .livery i { width: 30px; height: 16px; border-radius: 10px; border: 1px solid var(--faint); position: relative; transition: background .3s; }
+  .livery i::after { content: ''; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); transition: transform .3s, background .3s; }
+  .livery.on i { background: rgba(var(--accent-rgb), .25); }
+  .livery.on i::after { transform: translateX(14px); background: var(--accent); }
+
+  /* sections */
+  .section { min-height: 100vh; display: flex; align-items: center; padding: 140px var(--gutter); position: relative; }
+  .section.right { justify-content: flex-end; }
+  .section.top { align-items: flex-start; }
+  .copy { max-width: 440px; }
+  .num { font-family: var(--display); font-stretch: 125%; font-weight: 800; font-size: 13px; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 14px; }
+  .num::after { content: ''; width: 60px; height: 1px; background: var(--faint); }
+  .stats { display: flex; flex-wrap: wrap; gap: 34px; margin-top: 34px; padding-top: 24px; border-top: 1px solid var(--faint); }
+  .stat b { display: block; font-family: var(--display); font-stretch: 115%; font-weight: 800; font-size: 38px; line-height: 1; margin-bottom: 8px; }
+  .stat b small { font-size: .45em; font-weight: 500; color: var(--muted); margin-left: 4px; }
+  .stat span { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+  .note { margin-top: 26px; font-size: 12px; color: var(--accent); letter-spacing: .06em; }
+  .perf { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
+  .perf div { padding: 22px 0; border-bottom: 1px solid var(--faint); }
+  .perf b { display: block; font-family: var(--display); font-stretch: 120%; font-weight: 800; font-size: 46px; line-height: 1; }
+  .perf b small { font-size: .38em; font-weight: 500; color: var(--muted); margin-left: 6px; }
+  .perf span { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+  .config-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0 34px; }
+  .config-list button { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--faint); font-size: 13px; text-align: left; transition: border-color .3s, background .3s; }
+  .config-list button:hover { border-color: rgba(var(--accent-rgb), .6); }
+  .config-list button.active { border-color: var(--accent); background: rgba(var(--accent-rgb), .08); }
+  .config-list i { width: 18px; height: 18px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); flex: none; }
+  .actions { display: flex; flex-wrap: wrap; gap: 14px; }
+
+  .anatomy { position: relative; height: 360vh; }
+  .anatomy-sticky { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; padding: 100px var(--gutter) 36px; }
+  .anatomy-sticky h2 { font-size: clamp(30px, 3.2vw, 50px); margin: 10px 0 0; }
+  .anatomy-foot { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .anatomy-bar { width: 220px; height: 2px; background: var(--faint); }
+  .anatomy-bar span { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); }
+
+  footer { position: relative; z-index: 2; padding: 34px var(--gutter); border-top: 1px solid var(--faint); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; font-size: 11px; letter-spacing: .1em; color: var(--muted); background: var(--bg); }
+  footer a { text-decoration: underline; text-underline-offset: 3px; }
+
+  .reveal > * { opacity: 0; transform: translateY(30px); transition: opacity 1s cubic-bezier(.2,.7,.2,1), transform 1s cubic-bezier(.2,.7,.2,1); }
+  .reveal.in > * { opacity: 1; transform: none; }
+  .reveal.in > *:nth-child(2) { transition-delay: .07s; } .reveal.in > *:nth-child(3) { transition-delay: .14s; } .reveal.in > *:nth-child(4) { transition-delay: .21s; } .reveal.in > *:nth-child(5) { transition-delay: .28s; }
+
+  /* page steps back while inspecting / apart / bonnet open — the control dock always stays */
+  .hero-copy, .section .copy, .paints, .anatomy-sticky > div:first-child { transition: opacity .6s; }
+  body.inspecting .hero-copy, body.inspecting .section .copy, body.inspecting .paints { opacity: .06; }
+  body.exploded .hero-copy, body.exploded .paints, body.bay .hero-copy { opacity: .08; }
+
+  .tip { position: fixed; left: 0; top: 0; z-index: 15; pointer-events: none; opacity: 0; transition: opacity .25s; padding: 10px 14px; background: rgba(5,6,7,.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-left: 2px solid var(--accent); white-space: nowrap; }
+  .tip.on { opacity: 1; }
+  .tip b { display: block; font-family: var(--display); font-stretch: 110%; font-weight: 700; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; }
+  .tip span { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+
+  .inspector { position: fixed; right: var(--gutter); top: 50%; z-index: 16; width: min(380px, calc(100vw - 40px)); transform: translate(30px, -50%); opacity: 0; visibility: hidden; transition: opacity .5s, transform .5s cubic-bezier(.2,.7,.2,1), visibility .5s; background: rgba(8,9,11,.74); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--faint); border-top: 2px solid var(--accent); padding: 26px 26px 20px; }
+  .inspector.on { opacity: 1; visibility: visible; transform: translate(0, -50%); }
+  .insp-top { display: flex; justify-content: space-between; align-items: center; }
+  .close { width: 34px; height: 34px; border: 1px solid var(--faint); display: grid; place-items: center; font-size: 14px; }
+  .close:hover { border-color: var(--accent); }
+  .inspector h3 { font-family: var(--display); font-stretch: 112%; font-weight: 800; font-size: 27px; line-height: 1.02; text-transform: uppercase; margin: 14px 0 12px; }
+  .inspector p { color: var(--muted); font-size: 14px; line-height: 1.65; }
+  .insp-made { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--faint); }
+  .insp-made p { color: var(--ink); margin-top: 6px; }
+  .insp-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--faint); }
+  .insp-specs dt { font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .insp-specs dd { font-family: var(--display); font-stretch: 110%; font-weight: 700; font-size: 17px; }
+  .inspector { max-height: calc(100vh - 110px); overflow-y: auto; scrollbar-width: thin; }
+  .insp-photo { margin: -26px -26px 18px; position: relative; }
+  .insp-photo[hidden] { display: none; }
+  .insp-photo img { display: block; width: 100%; height: 170px; object-fit: cover; }
+  .insp-photo figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 12px 6px; font-size: 9.5px; color: rgba(238,241,244,.75); background: linear-gradient(transparent, rgba(0,0,0,.75)); }
+  .insp-photo figcaption a { text-decoration: underline; }
+  .insp-options { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--faint); display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+  .insp-options[hidden] { display: none; }
+  .insp-options .label { width: 100%; }
+  .opt-row { display: flex; gap: 9px; }
+  .opt-name { font-family: var(--display); font-stretch: 110%; font-weight: 700; font-size: 14px; }
+  .opt { width: 30px; height: 30px; border-radius: 50%; position: relative; background: var(--c); box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); transition: transform .25s; }
+  .opt::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; border: 1px solid transparent; }
+  .opt:hover { transform: scale(1.1); }
+  .opt.active::after { border-color: var(--accent); }
+  .show-labels { position: fixed; inset: 0; z-index: 7; pointer-events: none; }
+  .hero-stats { display: flex; gap: 26px; margin-top: 26px; }
+  .hero-stats b { display: block; font-family: var(--display); font-stretch: 120%; font-weight: 800; font-size: 30px; line-height: 1; }
+  .hero-stats span { font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+  .copy.wide { max-width: 640px; }
+  .spec-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 34px; }
+  .spec-groups dl:first-child { grid-column: 1 / -1; }
+  .spec-groups .spec-head { font-size: 10px; letter-spacing: .3em; text-transform: uppercase; color: var(--accent); margin: 18px 0 4px; }
+  .spec-groups div { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--faint); font-size: 13px; }
+  .spec-groups div dt { color: var(--muted); }
+  .spec-groups div dd { text-align: right; font-weight: 500; }
+  .cfg-label { display: block; margin-top: 8px; }
+
+  /* engine sound controls */
+  .engine-panel { position: absolute; left: var(--gutter); bottom: 112px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; z-index: 3; }
+  .engine-panel[hidden] { display: none; }
+  .engine-panel small { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .rpm { position: relative; min-width: 120px; padding: 8px 14px 12px; border: 1px solid var(--faint); background: rgba(5,6,7,.55); }
+  .rpm b { font-family: var(--display); font-stretch: 120%; font-weight: 800; font-size: 26px; }
+  .rpm span { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin-left: 6px; }
+  .rpm i { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; transform-origin: left; transform: scaleX(0); background: linear-gradient(90deg, var(--m1), var(--m2) 60%, var(--m3)); }
+  #revBtn.on { background: var(--m3); border-color: var(--m3); color: #fff; }
+
+  /* interior */
+  .cabin-hint { position: fixed; left: 50%; top: 90px; transform: translateX(-50%); z-index: 6; font-size: 10px; letter-spacing: .26em; text-transform: uppercase; color: var(--muted); padding: 8px 14px; background: rgba(5,6,7,.55); opacity: 0; transition: opacity .6s; pointer-events: none; }
+  body.inside .cabin-hint { opacity: 1; }
+  body.inside .hero-copy, body.inside .paints, body.inside .section .copy { opacity: 0; pointer-events: none; }
+  .idrive { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(0,0,0,.35); }
+  .idrive[hidden] { display: none; }
+  .idrive-screen { width: min(860px, calc(100vw - 30px)); border-radius: 18px; overflow: hidden; background: radial-gradient(120% 140% at 20% 0%, #1b2330 0%, #0a0d12 55%, #050608 100%); border: 1px solid rgba(255,255,255,.12); box-shadow: 0 40px 120px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.08); animation: screenIn .45s cubic-bezier(.2,.7,.2,1); }
+  @keyframes screenIn { from { opacity: 0; transform: translateY(20px) scale(.97); } }
+  .idrive header { display: flex; align-items: center; gap: 22px; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .idrive nav { display: flex; gap: 6px; flex: 1; }
+  .idrive nav button { padding: 9px 16px; border-radius: 999px; font-size: 13px; color: var(--muted); }
+  .idrive nav button.on { background: rgba(95,180,255,.16); color: #fff; }
+  .idrive-clock { font-family: var(--display); font-weight: 600; font-size: 15px; color: var(--muted); }
+  .idrive section { padding: 20px 22px 22px; }
+  .idrive section[hidden] { display: none; }
+  .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; }
+  .setup-row span { display: block; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .seg { display: flex; background: rgba(255,255,255,.05); border-radius: 10px; padding: 3px; }
+  .seg button { flex: 1; padding: 8px 6px; border-radius: 8px; font-size: 12.5px; color: var(--muted); transition: background .25s, color .25s; }
+  .seg button.on { background: linear-gradient(135deg, #2b4ea2, #5fb4ff); color: #fff; }
+  .setup-row input[type=range] { width: 100%; accent-color: #5fb4ff; }
+  .setup-foot { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
+  .mbtn { padding: 10px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,.15); font-size: 13px; }
+  .mbtn b { color: var(--m3); }
+  .mbtn:hover { border-color: var(--m3); }
+  #setupToast { font-size: 12px; color: #7fe3a6; }
+  .live { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 18px; align-items: end; text-align: center; }
+  .gauge b { display: block; font-family: var(--display); font-stretch: 120%; font-weight: 800; font-size: 44px; line-height: 1; }
+  .gauge.big b { font-size: 64px; }
+  .gauge span { font-size: 10px; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); }
+  .tach { height: 6px; margin-top: 12px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+  .tach i { display: block; height: 100%; width: 100%; transform-origin: left; transform: scaleX(0); background: linear-gradient(90deg, #5fb4ff, #2b4ea2 70%, #e2262f); }
+  .live-row, .status-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; }
+  .status-list { grid-template-columns: repeat(3, 1fr); }
+  .live-row div, .status-list div { padding: 12px; border-radius: 10px; background: rgba(255,255,255,.04); }
+  .live-row span, .status-list span { display: block; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+  .live-row b, .status-list b { font-size: 16px; font-weight: 600; }
+  .live-note { margin-top: 16px; font-size: 12px; color: var(--muted); }
+  .tyres { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px; padding: 16px; border-radius: 12px; background: rgba(255,255,255,.04); text-align: center; }
+  .listen { margin-top: 14px; }
+  .listen[hidden] { display: none; }
+
+  /* drive mode */
+  .take-wheel { position: fixed; left: 50%; top: 138px; z-index: 8; transform: translateX(-50%) skewX(-12deg); opacity: 0; pointer-events: none; transition: opacity .5s, background .35s, color .35s; }
+  body.inside .take-wheel { opacity: 1; pointer-events: auto; }
+  body.driving .take-wheel, body.driving .cabin-hint, body.driving #cabinSpots, body.driving .engine-panel { opacity: 0; pointer-events: none; }
+  body.driving .dock { opacity: .25; }
+  .dock { transition: opacity .4s; }
+  body.inspecting .dock, body.inspecting .engine-panel { opacity: 0; pointer-events: none; } /* never cover a part you're viewing */
+  .plabel { position: absolute; left: 0; top: 0; text-align: center; white-space: nowrap; padding-bottom: 8px; border-bottom: 1px solid var(--accent); transition: opacity .3s; }
+  .plabel b { display: block; font-family: var(--display); font-stretch: 110%; font-weight: 700; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+  .plabel.below { padding: 8px 0 0; border-bottom: 0; border-top: 1px solid var(--accent); }
+  .plabel i { font-style: normal; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .show-hint { position: fixed; left: 32%; bottom: 40px; transform: translateX(-50%); font-size: 10px; letter-spacing: .26em; text-transform: uppercase; color: var(--muted); padding: 8px 14px; background: rgba(5,6,7,.5); opacity: 0; }
+  body.inspecting #scene { cursor: grab; }
+  body.grabbing, body.grabbing #scene { cursor: grabbing; }
+  #hudControls { position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 9; display: flex; gap: 10px; }
+  #hudControls[hidden] { display: none; }
+  .hud { position: fixed; left: 50%; top: 17vh; transform: translateX(-50%); z-index: 9; display: flex; flex-direction: column; align-items: center; gap: 8px; text-shadow: 0 2px 12px rgba(0,0,0,.8); opacity: .92; }
+  .hud-controls { position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%); }
+  body.driving .dock { opacity: 0 !important; visibility: hidden; pointer-events: none; }
+
+  /* test-drive booking form */
+  .book { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(0,0,0,.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .book[hidden] { display: none; }
+  .book-card { position: relative; width: min(460px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; padding: 32px 30px 28px; background: #0b0d11; border: 1px solid var(--faint); border-top: 2px solid var(--accent); animation: screenIn .45s cubic-bezier(.2,.7,.2,1); }
+  .book-card .close { position: absolute; top: 18px; right: 18px; }
+  .book-card h3 { font-family: var(--display); font-stretch: 112%; font-weight: 800; font-size: 28px; text-transform: uppercase; margin: 10px 0 6px; }
+  .book-card form > p:not(.book-spec), .book-done p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 22px; }
+  .field { display: block; margin-bottom: 16px; }
+  .field span { display: block; font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+  .field input { width: 100%; padding: 13px 14px; font: inherit; font-size: 15px; color: var(--ink); background: rgba(255,255,255,.04); border: 1px solid var(--faint); border-radius: 0; outline: none; transition: border-color .25s; color-scheme: dark; }
+  .field input:focus { border-color: var(--accent); }
+  .field input:user-invalid { border-color: #ff4d5e; }
+  .field small { display: block; margin-top: 6px; font-size: 11px; color: #ff6b78; min-height: 0; }
+  .book-card .btn { width: 100%; justify-content: center; margin-top: 8px; }
+  .book-spec { font-size: 12px; color: var(--muted); margin: 4px 0 18px; }
+  .book-done { text-align: center; padding: 10px 0; }
+  .book-done .tick { width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 50%; display: grid; place-items: center; background: rgba(var(--accent-rgb), .15); color: var(--accent); font-size: 26px; }
+  .hud[hidden] { display: none; }
+  .hud-lights { display: flex; gap: 6px; }
+  .hud-lights i { width: 16px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); transition: background .05s, box-shadow .05s; }
+  .hud-lights i.g { background: #3ddc84; box-shadow: 0 0 10px #3ddc84; }
+  .hud-lights i.y { background: #ffcc33; box-shadow: 0 0 10px #ffcc33; }
+  .hud-lights i.r { background: #ff3344; box-shadow: 0 0 12px #ff3344; }
+  .hud-lights.flash i { background: #5fb4ff; box-shadow: 0 0 14px #5fb4ff; }
+  .hud-main { display: flex; align-items: flex-end; gap: 38px; }
+  .hud-main b { display: block; font-family: var(--display); font-stretch: 120%; font-weight: 800; line-height: 1; text-align: center; }
+  .hud-main span { display: block; text-align: center; font-size: 10px; letter-spacing: .24em; text-transform: uppercase; color: rgba(238,241,244,.7); }
+  .hud-speed b { font-size: 52px; min-width: 120px; }
+  .hud-gear b { font-size: 38px; color: var(--m1); }
+  .hud-rpm b { font-size: 26px; min-width: 90px; }
+  .hud-tach { width: 360px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+  .hud-tach i { display: block; height: 100%; width: 100%; transform-origin: left; transform: scaleX(0); background: linear-gradient(90deg, var(--m1), var(--m2) 70%, var(--m3)); }
+  .hud-controls { display: flex; gap: 10px; margin-top: 6px; }
+  #gasBtn.on { background: var(--m3); border-color: var(--m3); color: #fff; }
+  #brakeBtn.on { border-color: #ffcc33; color: #ffcc33; }
+  .insp-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; }
+  .insp-nav button { width: 44px; height: 38px; border: 1px solid var(--faint); font-size: 16px; }
+  .insp-nav button:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* engine-bay hotspots */
+  .spots { position: fixed; inset: 0; z-index: 6; pointer-events: none; }
+  .spot { position: absolute; left: 0; top: 0; pointer-events: auto; opacity: 0; transition: opacity .5s; display: flex; align-items: center; gap: 10px; }
+  .spot.on { opacity: 1; }
+  .spot .ring { width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; border: 1.5px solid var(--accent); display: grid; place-items: center; background: rgba(5,6,7,.45); backdrop-filter: blur(4px); }
+  .spot .ring::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); animation: pulse 1.8s infinite; }
+  @keyframes pulse { 50% { transform: scale(1.5); opacity: .5; } }
+  .spot span { margin-top: -13px; font-family: var(--display); font-stretch: 110%; font-weight: 700; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; padding: 6px 10px; background: rgba(5,6,7,.7); border-left: 2px solid var(--accent); white-space: nowrap; opacity: 0; transform: translateX(-6px); transition: opacity .3s, transform .3s; }
+  .spot:hover span, .spots.labels .spot span { opacity: 1; transform: none; }
+
+  .anatomy-labels { position: fixed; inset: 0; z-index: 4; pointer-events: none; opacity: 0; }
+  .alabel { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
+  .al-dot { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(var(--accent-rgb), .2); }
+  .al-line { position: absolute; left: 8px; top: 0; width: 50px; height: 1px; background: linear-gradient(90deg, var(--accent), rgba(var(--accent-rgb), .12)); }
+  .al-text { position: absolute; left: 66px; top: -14px; white-space: nowrap; display: flex; flex-direction: column; gap: 3px; }
+  .al-text b { font-family: var(--display); font-stretch: 110%; font-weight: 700; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+  .al-text i { font-style: normal; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .alabel.left .al-line { left: auto; right: 8px; background: linear-gradient(270deg, var(--accent), rgba(var(--accent-rgb), .12)); }
+  .alabel.left .al-text { left: auto; right: 66px; text-align: right; align-items: flex-end; }
+
+  @media (max-width: 860px) {
+    :root { --gutter: 18px; }
+    .nav-links { display: none; }
+    .hero-copy { top: 90px; transform: none; right: var(--gutter); }
+    h1 { font-size: 84px; }
+    .dock { bottom: 90px; gap: 10px; } .btn { padding: 13px 18px; }
+    .paints { left: var(--gutter); right: auto; bottom: 30px; }
+    .paint-name, .livery { display: none; }
+    .section { align-items: flex-end; padding: 52vh var(--gutter) 60px; }
+    .section.right { justify-content: flex-start; }
+    .copy { background: linear-gradient(transparent, rgba(5,6,7,.9) 18%); padding-top: 40px; }
+    .perf, .config-list { grid-template-columns: 1fr; }
+    .inspector { right: 10px; left: 10px; width: auto; top: auto; bottom: 10px; transform: translateY(30px); }
+    .inspector.on { transform: none; }
+    .al-text i { display: none; } .al-line { width: 22px; } .al-text { left: 36px; } .alabel.left .al-text { right: 36px; }
+    .loader-mark { font-size: 19px; letter-spacing: .18em; padding-left: .18em; }
+    .spot span { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loader" id="loader">
+  <div class="mstripes"><i></i><i></i><i></i></div>
+  <div class="loader-mark">M4 COMPETITION</div>
+  <div class="loader-bar"><span id="loadBar"></span></div>
+  <div class="loader-status" id="loadStatus">Loading the car</div>
+</div>
+
+<div class="progress" id="progress"></div>
+
+<nav class="nav" id="nav">
+  <a href="#top" class="logo"><span class="mstripes"><i></i><i></i><i></i></span>M4 <small>COMPETITION</small></a>
+  <div class="nav-links">
+    <a href="#design">Design</a><a href="#engine">Engine</a><a href="#anatomy">Anatomy</a><a href="#wheels">Wheels</a><a href="#performance">Performance</a><a href="#configure">Configure</a>
+  </div>
+  <button class="btn small ghost" data-book><span>Book a test drive</span></button>
+</nav>
+
+<canvas id="scene" aria-label="Interactive 3D model of the M4 Competition"></canvas>
+<div class="anatomy-labels" id="anatomyLabels" aria-hidden="true"></div>
+<div class="spots" id="spots"></div>
+<div class="show-labels" id="showLabels" aria-hidden="true"></div>
+<div class="spots" id="cabinSpots"></div>
+<div class="cabin-hint" id="cabinHint">Move the mouse to look around · click the glowing points</div>
+<button class="btn take-wheel" id="wheelBtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M3.5 10h6M14.5 10h6M12 14.5V21"/></svg><span>Take the wheel</span></button>
+
+<!-- test-drive booking -->
+<div class="book interactive" id="book" hidden role="dialog" aria-modal="true" aria-labelledby="bookTitle">
+  <div class="book-card">
+    <button class="close" id="bookClose" aria-label="Close">✕</button>
+    <form id="bookForm" novalidate>
+      <span class="kicker">M4 Competition</span>
+      <h3 id="bookTitle">Book a test drive</h3>
+      <p>Tell us when suits you and we'll confirm your drive by email.</p>
+      <label class="field"><span>Full name</span><input name="name" autocomplete="name" required minlength="2"><small></small></label>
+      <label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" required><small></small></label>
+      <label class="field"><span>Phone number</span><input name="phone" type="tel" autocomplete="tel" required pattern="[+0-9 ()\-]{7,}"><small></small></label>
+      <label class="field"><span>Preferred date</span><input name="date" type="date" required><small></small></label>
+      <p class="book-spec" id="bookSpec"></p>
+      <button class="btn" type="submit"><span>Request test drive</span></button>
+    </form>
+    <div class="book-done" id="bookDone" hidden>
+      <div class="tick">✓</div>
+      <h3>Request sent</h3>
+      <p id="bookDoneText"></p>
+      <button class="btn ghost" id="bookOk"><span>Back to the car</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- head-up display while driving -->
+<div class="hud interactive" id="hud" hidden>
+  <div class="hud-lights" id="hudLights"></div>
+  <div class="hud-main">
+    <div class="hud-speed"><b id="hudSpeed">0</b><span>km/h</span></div>
+    <div class="hud-gear"><b id="hudGear">1</b><span>gear</span></div>
+    <div class="hud-rpm"><b id="hudRpm">0</b><span>rpm</span></div>
+  </div>
+  <div class="hud-tach"><i id="hudTach"></i></div>
+</div>
+<div class="interactive" id="hudControls" hidden>
+  <button class="btn small" id="gasBtn"><span>Hold throttle · W / Space</span></button>
+  <button class="btn small ghost" id="brakeBtn"><span>Brake · S</span></button>
+  <button class="btn small ghost" id="exitDriveBtn"><span>Stop driving</span></button>
+</div>
+
+<!-- in-car screen (iDrive-style control display) -->
+<div class="idrive interactive" id="idrive" hidden>
+  <div class="idrive-screen">
+    <header>
+      <span class="mstripes"><i></i><i></i><i></i></span>
+      <nav><button data-tab="setup" class="on">M Setup</button><button data-tab="drive">Live data</button><button data-tab="car">Vehicle status</button></nav>
+      <span class="idrive-clock" id="idriveClock"></span>
+      <button class="close" id="idriveClose" aria-label="Close screen">✕</button>
+    </header>
+    <section data-panel="setup">
+      <div class="setup-grid" id="setupGrid"></div>
+      <div class="setup-foot"><button class="mbtn" data-save="M1">Save as <b>M1</b></button><button class="mbtn" data-save="M2">Save as <b>M2</b></button><span id="setupToast"></span></div>
+    </section>
+    <section data-panel="drive" hidden>
+      <div class="live">
+        <div class="gauge"><b id="liveSpeed">0</b><span>km/h</span></div>
+        <div class="gauge big"><b id="liveRpm">0</b><span>rpm</span><div class="tach"><i id="liveTach"></i></div></div>
+        <div class="gauge"><b id="liveGear">N</b><span>gear</span></div>
+      </div>
+      <div class="live-row"><div><span>Boost</span><b id="liveBoost">0.0 bar</b></div><div><span>Oil</span><b>104 °C</b></div><div><span>Coolant</span><b>92 °C</b></div><div><span>Power</span><b id="livePower">0 PS</b></div></div>
+      <p class="live-note">Start the engine and hold "rev" to watch the numbers move.</p>
+    </section>
+    <section data-panel="car" hidden>
+      <div class="status">
+        <div class="tyres"><span>FL 2.4 bar · 32 °C</span><span>FR 2.4 bar · 31 °C</span><span>RL 2.6 bar · 34 °C</span><span>RR 2.6 bar · 34 °C</span></div>
+        <div class="status-list"><div><span>Range</span><b>480 km</b></div><div><span>Fuel</span><b>41 / 59 L</b></div><div><span>Oil level</span><b>OK</b></div><div><span>Brake pads</span><b>18,000 km</b></div><div><span>Next service</span><b>9,500 km</b></div><div><span>Battery</span><b>12.6 V</b></div></div>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="tip" id="tip"><b></b><span id="tipHint">Click to inspect</span></div>
+
+<aside class="inspector interactive" id="inspector" aria-live="polite">
+  <figure class="insp-photo" id="inPhotoWrap"><img id="inPhoto" alt="Photo of this part on a real car"><figcaption id="inCredit"></figcaption></figure>
+  <div class="insp-top"><span class="kicker" id="inKicker"></span><button class="close" id="inClose" aria-label="Close">✕</button></div>
+  <h3 id="inName"></h3>
+  <p id="inText"></p>
+  <div class="insp-options" id="inOptions" hidden><span class="label" id="inOptionsLabel"></span><div class="opt-row" id="inOptionsRow"></div><span class="opt-name" id="inOptionsName"></span></div>
+  <div class="insp-made"><span class="label">Made from</span><p id="inMade"></p></div>
+  <dl class="insp-specs" id="inSpecs"></dl>
+  <button class="btn small listen" id="listenBtn" hidden><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/></svg><span>Listen to the exhaust</span></button>
+  <div class="insp-nav"><button id="inPrev" aria-label="Previous part">←</button><span class="label" id="inCount"></span><button id="inNext" aria-label="Next part">→</button></div>
+</aside>
+
+<main id="top">
+  <section class="hero" data-view>
+    <div class="hero-copy reveal">
+      <p class="eyebrow">Concept experience</p>
+      <h1>M4<span>Competition</span></h1>
+      <p class="lead">510 PS, carbon everywhere, and every part explained. Open the bonnet, click any part to lift it out of the car, or take the whole car apart.</p>
+      <div class="hero-stats"><div><b>510</b><span>PS</span></div><div><b>650</b><span>Nm</span></div><div><b>3.9</b><span>s 0–100</span></div><div><b>290</b><span>km/h</span></div></div>
+    </div>
+    <div class="dock interactive">
+      <button class="btn" id="hoodBtn"><svg viewBox="0 0 24 24"><path d="M3 15l9-6 9 6"/><path d="M5 19h14"/></svg><span id="hoodText">Open bonnet</span></button>
+      <button class="btn ghost" id="explodeBtn"><svg viewBox="0 0 24 24"><path d="M12 3v5M12 16v5M3 12h5M16 12h5"/><circle cx="12" cy="12" r="2"/></svg><span id="explodeText">Take it apart</span></button>
+      <button class="btn ghost" id="driveBtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12l4-3"/></svg><span id="driveText">Start engine</span></button>
+      <button class="btn ghost" id="insideBtn"><svg viewBox="0 0 24 24"><path d="M4 18c0-5 3-9 8-9s8 4 8 9"/><circle cx="12" cy="5" r="2"/></svg><span id="insideText">Step inside</span></button>
+    </div>
+    <div class="engine-panel interactive" id="enginePanel" hidden>
+      <div class="rpm"><b id="rpmVal">0</b><span>rpm</span><i id="rpmBar"></i></div>
+      <button class="btn small" id="revBtn"><span>Hold to rev</span></button>
+      <button class="btn small ghost" id="exhaustBtn"><span id="exhaustText">Exhaust: Sport</span></button>
+      <small>Synthesised S58 sound · Space = rev</small>
+    </div>
+    <div class="paints interactive">
+      <button class="livery on" id="liveryBtn"><i></i>M livery</button>
+      <div class="swatches" id="swatches"></div>
+      <span class="paint-name" id="paintName"></span>
+    </div>
+  </section>
+
+  <section class="section top" id="design" data-view>
+    <div class="copy reveal">
+      <p class="num">01</p><p class="kicker">Design</p>
+      <h2>Wide hips. <em>Carbon crown.</em></h2>
+      <p class="body">Flared arches, a vertical kidney grille, a carbon roof and a swan-neck rear wing. Move over the car to highlight any part; click it to read what it is and what it's made of.</p>
+      <div class="stats"><div class="stat"><b>CFRP</b><span>Roof &amp; wing</span></div><div class="stat"><b>4</b><span>Tailpipes</span></div><div class="stat"><b>19/20<small>in</small></b><span>Wheels</span></div></div>
+    </div>
+  </section>
+
+  <section class="section" id="engine" data-view>
+    <div class="copy reveal">
+      <p class="num">02</p><p class="kicker">Under the bonnet</p>
+      <h2>The bonnet opens. <em>Meet the S58.</em></h2>
+      <p class="body">3.0 litres, six cylinders in a row, two turbochargers. Click the glowing points to explore the engine, the cooling pack, the carbon strut brace and the air intakes.</p>
+      <div class="stats"><div class="stat"><b>510<small>PS</small></b><span>Output</span></div><div class="stat"><b>650<small>Nm</small></b><span>Torque</span></div><div class="stat"><b>7,200</b><span>RPM limit</span></div></div>
+    </div>
+  </section>
+
+  <section class="anatomy" id="anatomy" data-view>
+    <div class="anatomy-sticky">
+      <div class="reveal"><p class="kicker">03 · Anatomy</p><h2>Every piece. <em>In its place.</em></h2></div>
+      <div class="anatomy-foot"><span class="label" id="anatomyState">Scroll to take it apart</span><div class="anatomy-bar"><span id="anatomyBar"></span></div></div>
+    </div>
+  </section>
+
+  <section class="section" id="wheels" data-view>
+    <div class="copy reveal">
+      <p class="num">04</p><p class="kicker">Wheels &amp; brakes</p>
+      <h2>Gold calipers. <em>Forged grip.</em></h2>
+      <p class="body">Forged M wheels, 19-inch at the front and 20-inch at the rear. Behind them sit M Carbon ceramic brakes with gold calipers: lighter, fade-resistant, built for the track.</p>
+      <div class="stats"><div class="stat"><b>400<small>mm</small></b><span>Front discs</span></div><div class="stat"><b>6</b><span>Piston calipers</span></div><div class="stat"><b>285<small>/30</small></b><span>Rear tyres</span></div></div>
+    </div>
+  </section>
+
+  <section class="section right" id="performance" data-view>
+    <div class="copy reveal">
+      <p class="num">05</p><p class="kicker">Performance</p>
+      <h2>Numbers that <em>move you.</em></h2>
+      <div class="perf">
+        <div><b>3.9<small>s</small></b><span>0–100 km/h</span></div>
+        <div><b>290<small>km/h</small></b><span>With M Driver's Pack</span></div>
+        <div><b>8<small>speed</small></b><span>M Steptronic</span></div>
+        <div><b>RWD<small>/ xDrive</small></b><span>Drive</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section right" id="specs" data-view>
+    <div class="copy wide reveal">
+      <p class="num">06</p><p class="kicker">Technical data</p>
+      <h2>Every <em>number.</em></h2>
+      <div class="spec-groups">
+        <dl><dt class="spec-head">Engine</dt>
+          <div><dt>Type</dt><dd>S58 straight-six, twin-turbo</dd></div>
+          <div><dt>Displacement</dt><dd>2,993 cc</dd></div>
+          <div><dt>Bore × stroke</dt><dd>84.0 × 90.0 mm</dd></div>
+          <div><dt>Compression</dt><dd>9.3 : 1</dd></div>
+          <div><dt>Max power</dt><dd>510 PS (375 kW) @ 6,250 rpm</dd></div>
+          <div><dt>Max torque</dt><dd>650 Nm @ 2,750–5,500 rpm</dd></div>
+          <div><dt>Rev limit</dt><dd>7,200 rpm</dd></div>
+        </dl>
+        <dl><dt class="spec-head">Performance</dt>
+          <div><dt>0–100 km/h</dt><dd>3.9 s (M xDrive 3.5 s)</dd></div>
+          <div><dt>Top speed</dt><dd>250 km/h · 290 with M Driver's Pack</dd></div>
+          <div><dt>Power-to-weight</dt><dd>≈ 3.4 kg per PS</dd></div>
+          <div><dt>Gearbox</dt><dd>8-speed M Steptronic, Drivelogic</dd></div>
+          <div><dt>Drive</dt><dd>RWD, Active M Differential</dd></div>
+          <div><dt>Consumption</dt><dd>≈ 10.2 l/100 km (WLTP)</dd></div>
+        </dl>
+        <dl><dt class="spec-head">Chassis &amp; body</dt>
+          <div><dt>Length / width / height</dt><dd>4,794 / 1,887 / 1,393 mm</dd></div>
+          <div><dt>Wheelbase</dt><dd>2,857 mm</dd></div>
+          <div><dt>Kerb weight (EU)</dt><dd>≈ 1,725 kg</dd></div>
+          <div><dt>Tyres</dt><dd>275/35 R19 · 285/30 R20</dd></div>
+          <div><dt>Brakes</dt><dd>M Compound · M Carbon ceramic (opt.)</dd></div>
+          <div><dt>Fuel tank / boot</dt><dd>59 L / 440 L</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="configure" data-view>
+    <div class="copy reveal">
+      <p class="num">07</p><p class="kicker">Configure</p>
+      <h2>Spec <em>yours.</em></h2>
+      <span class="label cfg-label">Paint</span>
+      <div class="config-list interactive" id="configList"></div>
+      <span class="label cfg-label">M Carbon bucket seats</span>
+      <div class="config-list interactive" id="seatList"></div>
+      <span class="label cfg-label">Brake calipers</span>
+      <div class="config-list interactive" id="caliperList"></div>
+      <div class="actions"><button class="btn" data-book><span>Book a test drive</span></button></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>Concept demo website · Not affiliated with BMW AG · Figures are indicative</span>
+  <span>3D model: <a href="https://sketchfab.com/3d-models/bmw-m4-competition-m-package-5c0a2dafb1ad408d9fc9eeef9aee531b" target="_blank" rel="noopener">"BMW M4 Competition M Package"</a> by <a href="https://sketchfab.com/TheRealSRT" target="_blank" rel="noopener">SRT Performance</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></span>
+</footer>
+
+<!-- the car, embedded so the page also works when opened straight from disk -->
+<script src="models/bmw_m4.glb.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = t => t * t * (3 - 2 * t);
+const damp = (a, b, lambda, dt) => lerp(a, b, 1 - Math.exp(-lambda * dt));
+const nearestAngle = (target, current) => target + TAU * Math.round((current - target) / TAU);
+const easeInOut = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const params = new URLSearchParams(location.search);
+const SNAP = params.has('snap'); // settle instantly (automated screenshots)
+const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+
+/* ============================================================
+   Paints (body colour) — the M livery decals sit on top
+   ============================================================ */
+const PAINTS = {
+  white:  { name: 'Alpine White',      color: '#e9ebec', metal: 0.0,  rough: 0.22, accent: '#5fb4ff', rgb: '95, 180, 255' },
+  green:  { name: 'Isle of Man Green', color: '#0f5a47', metal: 0.65, rough: 0.28, accent: '#46d6a9', rgb: '70, 214, 169' },
+  yellow: { name: 'São Paulo Yellow',  color: '#e7bf16', metal: 0.05, rough: 0.2,  accent: '#f4cf2e', rgb: '244, 207, 46' },
+  blue:   { name: 'Portimão Blue',     color: '#1a4ca2', metal: 0.6,  rough: 0.28, accent: '#5ea9ff', rgb: '94, 169, 255' },
+  red:    { name: 'Toronto Red',       color: '#8a0e1d', metal: 0.6,  rough: 0.28, accent: '#ff4d5e', rgb: '255, 77, 94' },
+  grey:   { name: 'Brooklyn Grey',     color: '#80878c', metal: 0.35, rough: 0.25, accent: '#b3c4d2', rgb: '179, 196, 210' },
+  black:  { name: 'Black Sapphire',    color: '#0b0c10', metal: 0.7,  rough: 0.26, accent: '#5fb4ff', rgb: '95, 180, 255' },
+};
+let paint = PAINTS.white;
+
+/* ============================================================
+   Renderer, studio, camera
+   ============================================================ */
+const renderer = new THREE.WebGLRenderer({ canvas: $('#scene'), antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.autoClear = false;
+
+const BG = new THREE.Color('#050607');
+const scene = new THREE.Scene();
+scene.background = BG;
+scene.fog = new THREE.Fog(BG, 14, 40);
+
+// Dark studio: long overhead light bars + soft boxes = the reflections that make paint look real
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = (() => {
+  const s = new THREE.Scene();
+  s.add(new THREE.Mesh(new THREE.BoxGeometry(60, 24, 60), new THREE.MeshBasicMaterial({ color: 0x030303, side: THREE.BackSide })));
+  const panel = (w, h, pos, rot, k) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(1, 1, 1).multiplyScalar(k), side: THREE.DoubleSide }));
+    m.position.set(...pos); m.rotation.set(...rot); s.add(m);
+  };
+  for (const x of [-4.5, -1.5, 1.5, 4.5]) panel(0.7, 22, [x, 10, 0], [Math.PI / 2, 0, 0], 3.4);
+  panel(5, 16, [18, 4, 0], [0, -Math.PI / 2, 0], 1.0);
+  panel(5, 16, [-18, 4, 0], [0, Math.PI / 2, 0], 0.8);
+  panel(10, 4, [0, 3, 20], [0, Math.PI, 0], 1.1);
+  panel(10, 4, [0, 3, -20], [0, 0, 0], 0.6);
+  return pmrem.fromScene(s, 0.02).texture;
+})();
+
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.05, 120);
+camera.position.set(6, 2, 8);
+
+const hemi = new THREE.HemisphereLight(0xa9bccf, 0x050505, 0.25);
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.6);
+keyLight.position.set(5, 8, 4);
+const rimLight = new THREE.DirectionalLight(0x9cc7ff, 1.4);
+rimLight.position.set(-6, 3, -6);
+const bayLight = new THREE.PointLight(0xffffff, 0, 3, 1.5); // lights the engine bay when the bonnet is up
+bayLight.position.set(0, 1.6, 1.5);
+const sweep = new THREE.SpotLight(0xffffff, 18, 14, 0.32, 1, 1.6);
+sweep.position.set(0, 6, 0);
+scene.add(hemi, keyLight, rimLight, bayLight, sweep, sweep.target);
+[hemi, keyLight, rimLight, bayLight, sweep].forEach(l => { l.layers.enable(1); l.layers.enable(2); });
+
+function canvasTexture(w, h, draw) {
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  draw(cv.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const shadowTex = canvasTexture(256, 256, (ctx, w) => {
+  const g = ctx.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+  g.addColorStop(0, 'rgba(0,0,0,0.92)'); g.addColorStop(0.55, 'rgba(0,0,0,0.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, w);
+});
+const roadTex = canvasTexture(256, 1024, (ctx, w, h) => {
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  for (let y = 0; y < h; y += 128) ctx.fillRect(w / 2 - 3, y, 6, 70);
+  ctx.fillRect(18, 0, 4, h); ctx.fillRect(w - 22, 0, 4, h);
+});
+roadTex.wrapT = THREE.RepeatWrapping;
+roadTex.repeat.set(1, 6);
+
+/* ============================================================
+   Scene graph: carYaw (turntable) -> car (vibration) -> part groups
+   Car space: +Z front, +Y up, +X the car's left side. Metres.
+   ============================================================ */
+const carYaw = new THREE.Group();
+const car = new THREE.Group();
+carYaw.add(car);
+scene.add(carYaw);
+const floor = new THREE.Mesh(new THREE.CircleGeometry(40, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#0a0b0d', roughness: 0.85, envMapIntensity: 0.25 }));
+scene.add(floor);
+const contact = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 5.6).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+contact.position.y = 0.004;
+carYaw.add(contact);
+const road = new THREE.Mesh(new THREE.PlaneGeometry(7, 60).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: roadTex, transparent: true, opacity: 0, depthWrite: false }));
+road.position.y = 0.003;
+carYaw.add(road);
+const streaks = (() => {
+  const n = 80, pos = new Float32Array(n * 6), data = [];
+  for (let i = 0; i < n; i++) {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    data.push({ z: (Math.random() - 0.5) * 30, y: 0.1 + Math.random() * 2.4, x: side * (1.5 + Math.random() * 4), len: 0.6 + Math.random() * 1.8 });
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const lines = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+  lines.frustumCulled = false;
+  carYaw.add(lines);
+  return { lines, data, pos };
+})();
+
+/* ============================================================
+   Materials: the model ships flat materials — replace them with
+   physically based ones (clearcoat paint, real glass, rubber, metal)
+   ============================================================ */
+const matPaint = new THREE.MeshPhysicalMaterial({ color: paint.color, metalness: paint.metal, roughness: paint.rough, clearcoat: 1, clearcoatRoughness: 0.03 });
+const paintTarget = { color: new THREE.Color(paint.color), metal: paint.metal, rough: paint.rough };
+const matCache = new Map();
+let matLivery = null;
+function upgrade(orig) {
+  if (matCache.has(orig)) return matCache.get(orig);
+  const n = orig.name || '', map = orig.map || null, side = orig.side;
+  let m;
+  if (n.includes('zx1')) m = matPaint;
+  else if (n.includes('livery')) m = matLivery = new THREE.MeshPhysicalMaterial({ map, roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.04, side, polygonOffset: true, polygonOffsetFactor: -1 });
+  else if (n.includes('windows')) m = new THREE.MeshPhysicalMaterial({ color: '#0b0e12', metalness: 0.1, roughness: 0.03, transparent: true, opacity: 0.55, clearcoat: 1, envMapIntensity: 1.6, side: THREE.DoubleSide, depthWrite: false });
+  else if (n.includes('headlight5')) m = new THREE.MeshPhysicalMaterial({ color: '#ffffff', metalness: 0, roughness: 0.02, transparent: true, opacity: 0.18, clearcoat: 1, envMapIntensity: 2, depthWrite: false });
+  else if (n.includes('pillars') || n.includes('black16')) m = new THREE.MeshPhysicalMaterial({ color: '#060708', metalness: 0.2, roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.05, side });
+  else if (n.includes('body15') || n.includes('black15')) m = new THREE.MeshPhysicalMaterial({ map, color: map ? '#ffffff' : '#111', metalness: 0.25, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.05, side });
+  else if (n.includes('m8rim0011')) m = new THREE.MeshStandardMaterial({ map, roughness: 0.88, metalness: 0, side });
+  else if (n.includes('m8rim1')) m = new THREE.MeshPhysicalMaterial({ map, metalness: 0.85, roughness: 0.3, clearcoat: 0.6, side });
+  else if (n.includes('Caliper')) m = new THREE.MeshPhysicalMaterial({ color: '#b98a3e', metalness: 0.6, roughness: 0.3, clearcoat: 1 });
+  else if (n.includes('chrome')) m = new THREE.MeshStandardMaterial({ color: '#c9ced4', metalness: 1, roughness: 0.12 });
+  else if (n.includes('redlight') || n.includes('tail7')) m = new THREE.MeshStandardMaterial({ color: '#ff1a2a', emissive: '#ff1022', emissiveIntensity: 1.8 });
+  else if (n.includes('led') || n.includes('light5')) m = new THREE.MeshStandardMaterial({ map, emissiveMap: map, emissive: '#ffffff', emissiveIntensity: 0.9, roughness: 0.2, metalness: 0.4, side });
+  else if (n.includes('engine')) m = new THREE.MeshStandardMaterial({ map, metalness: 0.45, roughness: 0.5, side });
+  else if (n.includes('interior') || n.includes('dash') || n.includes('white4')) m = new THREE.MeshStandardMaterial({ map, color: map ? '#ffffff' : '#d8d8d8', roughness: 0.72, side });
+  else if (n.includes('logo')) m = new THREE.MeshPhysicalMaterial({ map, metalness: 0.5, roughness: 0.25, clearcoat: 1, side });
+  else m = new THREE.MeshStandardMaterial({ map, color: map ? '#ffffff' : (orig.color || '#333'), roughness: 0.5, metalness: 0.3, side });
+  m.name = n;
+  matCache.set(orig, m);
+  return m;
+}
+
+/* ============================================================
+   Parts: the model is merged by material, so we split every mesh into
+   its connected pieces ("islands") and sort each piece into a part.
+   ============================================================ */
+const WHEEL_CENTERS = [V3(0.85, 0.375, 1.53), V3(-0.85, 0.375, 1.53), V3(0.87, 0.375, -1.32), V3(-0.87, 0.375, -1.32)];
+const PARTGROUPS = {}; // key -> { outer (moves when exploding), inner (hinge / spin), pivot, box, meshes }
+const ENGINE_BITS = []; // engine sections for the exploded view
+// split-model keys -> the part names used for hover / info / showcase
+const ENG_PART = { core: 's58', turbo: 'turbo', intake: 'intake', cooling: 'cooling', brace: 'brace', fluids: 'fluids' };
+const partName = k => (k.startsWith('eng:') ? ENG_PART[k.slice(4)] : k.startsWith('engine:') ? 's58' : k.startsWith('door') ? 'doors'
+  : /^(wheel|tyre)\d$/.test(k) ? 'wheels' : /^(brake|disc)\d$/.test(k) ? 'brakes' : k);
+// The model file is pre-split (tools/split_parts.mjs): one node per part, positioned at its pivot,
+// already in car space (metres). Here we just wrap each part so it can move, hinge and spin.
+function buildParts(root) {
+  root.updateMatrixWorld(true);
+  const nodes = [];
+  root.traverse(o => { if (o.userData && o.userData.part) nodes.push(o); });
+  for (const node of nodes) {
+    const key = node.userData.part;
+    const outer = new THREE.Group(), inner = new THREE.Group();
+    outer.position.copy(node.position);
+    outer.add(inner);
+    [...node.children].forEach(ch => inner.add(ch));
+    const meshes = [];
+    inner.traverse(o => {
+      if (!o.isMesh) return;
+      o.material = upgrade(o.material);
+      if (o.material.transparent) o.renderOrder = 2;
+      meshes.push(o);
+    });
+    outer.userData.part = partName(key);
+    car.add(outer);
+    PARTGROUPS[key] = { key, outer, inner, pivot: node.position.clone(), meshes };
+    if (key.startsWith('engine:') || key.startsWith('eng:')) ENGINE_BITS.push(PARTGROUPS[key]);
+  }
+  car.updateMatrixWorld(true);
+  for (const pg of Object.values(PARTGROUPS)) pg.box = new THREE.Box3().setFromObject(pg.outer);
+}
+/* ============================================================
+   Part information (hover, inspect, tour)
+   ============================================================ */
+const PARTS = {
+  hood:       { kicker: 'Body', name: 'Bonnet', view: [0.3, 1, 0.8], hint: 'Click to open the bonnet',
+    text: 'The long, sculpted bonnet with its power dome and air vents. It hinges at the windscreen and lifts from the front to reveal the S58 engine.',
+    made: 'Aluminium outer skin over a lightweight inner frame', specs: [['Material', 'Aluminium'], ['Hinge', 'Rear'], ['Vents', 'Heat extraction'], ['Dome', 'Power dome']] },
+  engine:     { kicker: 'Powertrain', name: 'S58 straight-six', view: [0.3, 1, 0.6],
+    text: 'Six cylinders in a row, 3.0 litres, two mono-scroll turbochargers. It revs to 7,200 rpm and sits low and far back for balance.',
+    made: 'Closed-deck aluminium crankcase, forged crankshaft, cylinder-head core made with 3D printing', specs: [['Output', '510 PS'], ['Torque', '650 Nm'], ['Displacement', '2,993 cc'], ['Limiter', '7,200 rpm']] },
+  doors:      { kicker: 'Body', name: 'Frameless doors', view: [1, 0.4, 0.2],
+    text: 'Long coupé doors with frameless side glass that drops slightly when opened, for a clean, low roofline.',
+    made: 'Steel and aluminium structure, painted skin, leather and carbon door cards', specs: [['Windows', 'Frameless'], ['Count', '2'], ['Trim', 'Carbon'], ['Style', 'Coupé']] },
+  roof:       { kicker: 'Body', name: 'Carbon-fibre roof', view: [0.3, 1, 0.3],
+    text: 'Made from carbon fibre instead of steel, it saves weight at the highest point of the car and lowers the centre of gravity.',
+    made: 'Carbon-fibre-reinforced plastic (CFRP), exposed weave', specs: [['Material', 'CFRP'], ['Finish', 'Visible weave'], ['Benefit', 'Lower CoG'], ['Location', 'Roof']] },
+  wing:       { kicker: 'Aero', name: 'M Performance rear wing', view: [0.5, 0.6, -1],
+    text: 'A swan-neck carbon wing that presses the rear of the car onto the road at speed without adding drag at the front.',
+    made: 'Carbon-fibre-reinforced plastic, aluminium mounts', specs: [['Material', 'CFRP'], ['Mount', 'Swan-neck'], ['Job', 'Downforce'], ['Position', 'Boot lid']] },
+  trunk:      { kicker: 'Body', name: 'Boot lid', view: [0.3, 0.8, -1],
+    text: 'The boot lid carries the rear wing and hides a 440-litre luggage space.',
+    made: 'Aluminium inner and outer panels', specs: [['Volume', '440 L'], ['Material', 'Aluminium'], ['Carries', 'Rear wing'], ['Opening', 'Powered']] },
+  front:      { kicker: 'Design', name: 'Kidney grille & front apron', view: [0.35, 0.25, 1],
+    text: 'The vertical kidney grille feeds the radiators behind it. The apron has large intakes for the brakes and a carbon splitter for downforce.',
+    made: 'Painted polypropylene, gloss-black grille, carbon-fibre splitter', specs: [['Grille', 'Vertical kidney'], ['Splitter', 'CFRP'], ['Intakes', '3'], ['Role', 'Cooling + aero']] },
+  headlights: { kicker: 'Design', name: 'Adaptive LED headlights', view: [0.5, 0.2, 1],
+    text: 'Slim LED units with hexagonal daytime running lights. They swivel into corners and dip automatically for oncoming traffic.',
+    made: 'Polycarbonate lens, LED modules, aluminium reflectors', specs: [['Type', 'Adaptive LED'], ['DRL', 'Hexagonal'], ['Cornering', 'Yes'], ['High beam', 'Auto']] },
+  taillights: { kicker: 'Design', name: 'LED tail lights', view: [0.4, 0.3, -1],
+    text: 'Three-dimensional, smoked LED tail lights that wrap around the rear corners.',
+    made: 'Tinted polycarbonate lens, LED light guides', specs: [['Type', 'Full LED'], ['Lens', 'Smoked'], ['Signature', 'L-shape'], ['Brake', 'LED']] },
+  rear:       { kicker: 'Aero', name: 'Carbon diffuser & tailpipes', view: [0.4, 0.2, -1],
+    text: 'The rear diffuser smooths the airflow under the car and frames the four tailpipes of the M exhaust.',
+    made: 'Carbon-fibre diffuser, stainless-steel exhaust, black-chrome tips', specs: [['Diffuser', 'CFRP'], ['Tailpipes', '4'], ['Flaps', 'Electric'], ['Tips', 'Black chrome']] },
+  wheels:     { kicker: 'Chassis', name: 'Forged M wheels', view: [1, 0.3, 0.35],
+    text: 'Staggered forged wheels: 19-inch at the front for sharp steering, 20-inch at the rear to put the power down.',
+    made: 'Forged aluminium alloy, high-performance tyres', specs: [['Front', '275/35 R19'], ['Rear', '285/30 R20'], ['Wheel', 'Forged'], ['Spokes', 'Y-spoke']] },
+  brakes:     { kicker: 'Chassis', name: 'M Carbon ceramic brakes', view: [1, 0.35, 0.25],
+    text: 'Gold six-piston calipers bite on carbon-ceramic discs that are lighter than steel and resist fade lap after lap.',
+    made: 'Carbon-fibre-reinforced ceramic discs, aluminium calipers', specs: [['Front discs', '400 mm'], ['Front pistons', '6'], ['Caliper', 'Gold'], ['Weight', '−21 kg vs steel']] },
+  seats:      { kicker: 'Interior · M Carbon', name: 'M Carbon bucket seats', view: [0.5, 1, 0.3],
+    text: 'Race-derived bucket seats with a one-piece carbon-fibre shell, deep side bolsters and integrated headrests. Cut-outs in the backrest and under the thighs save weight, and an illuminated M4 badge sits in the backrest. They still offer electric adjustment and heating for everyday driving. Choose the upholstery below.',
+    made: 'Carbon-fibre-reinforced plastic (CFRP) shell, extended Merino leather with contrast stitching', specs: [['Weight saving', '≈ 9.6 kg (pair)'], ['Shell', 'One-piece CFRP'], ['Headrest', 'Integrated, illuminated badge'], ['Comfort', 'Electric · heated']] },
+  cabin:      { kicker: 'Interior', name: 'Cockpit', view: [0.4, 0.9, 0.6],
+    text: 'A curved driver display, the M steering wheel with red M1/M2 buttons, and carbon trim throughout.',
+    made: 'Merino leather, carbon fibre, aluminium', specs: [['Display', 'Curved'], ['Buttons', 'M1 / M2'], ['Trim', 'Carbon'], ['Seats', '4']] },
+  glass:      { kicker: 'Body', name: 'Glasshouse', view: [0.5, 0.7, 0.8],
+    text: 'Acoustic windscreen and rear window, framed by gloss-black pillars.',
+    made: 'Laminated acoustic glass', specs: [['Screen', 'Acoustic'], ['Tint', 'Solar'], ['Pillars', 'Gloss black'], ['Heating', 'Rear']] },
+  shell:      { kicker: 'Body', name: 'Body shell', view: [0.9, 0.5, 0.6],
+    text: 'Steel and aluminium shell with flared wheel arches, wider than the standard coupé at both axles.',
+    made: 'High-strength steel, aluminium, carbon side skirts', specs: [['Structure', 'Steel/aluminium'], ['Arches', 'Flared'], ['Skirts', 'Carbon'], ['Length', '4.79 m']] },
+};
+// engine-bay hotspots (car space); each frames a region of the bay
+const SPOTS = {
+  s58:     { at: [0.02, 0.97, 1.52], r: [0.5, 0.25, 0.45], kicker: 'Powertrain', name: 'S58 engine', view: [0.25, 1, 0.55],
+    text: 'Under the M Power cover sits the 3.0-litre straight-six. Six individual coils fire the cylinders; the cover hides the intake plenum.',
+    made: 'Aluminium block and head, magnesium-reinforced cover', specs: [['Output', '510 PS'], ['Torque', '650 Nm'], ['Bore × stroke', '84 × 90 mm'], ['Compression', '9.3:1']] },
+  brace:   { at: [0.2, 0.93, 1.16], r: [0.75, 0.15, 0.2], kicker: 'Chassis', name: 'Strut brace', view: [0.2, 1, 0.9],
+    text: 'Bolts the suspension towers to the bulkhead so the front end stays stiff and precise under hard cornering.',
+    made: 'Aluminium and carbon fibre', specs: [['Mounts', '3-point'], ['Job', 'Stiffness'], ['Front axle', 'Double-joint'], ['Weight', 'Light']] },
+  cooling: { at: [0.0, 0.8, 2.05], r: [0.6, 0.2, 0.25], kicker: 'Powertrain', name: 'Cooling pack', view: [0.2, 1, 1],
+    text: 'A main radiator plus auxiliary coolers behind the kidneys keep the engine, oil and charge air cool, even on a race track.',
+    made: 'Aluminium cores, glass-fibre-reinforced tanks', specs: [['Radiators', '3'], ['Oil cooler', 'Yes'], ['Fan', 'Electric'], ['Fed by', 'Kidneys']] },
+  intake:  { at: [-0.5, 0.82, 1.78], r: [0.35, 0.2, 0.4], kicker: 'Powertrain', name: 'Air intake & charge pipes', view: [-0.5, 1, 0.9],
+    text: 'Fresh air is drawn in behind the grille, compressed by the turbos, cooled and fed to the six cylinders through these pipes.',
+    made: 'Glass-fibre composite, silicone hoses, aluminium clamps', specs: [['Filters', '2'], ['Path', 'Grille → turbo'], ['Charge cooling', 'Indirect'], ['Boost', '≈1.7 bar']] },
+  turbo:   { at: [0.38, 0.8, 1.45], r: [0.3, 0.25, 0.4], kicker: 'Powertrain', name: 'Twin turbochargers', view: [0.9, 1, 0.4],
+    text: 'Two mono-scroll turbos on the exhaust side, each fed by three cylinders. Exhaust gas spins the turbine, which forces extra air into the engine.',
+    made: 'Heat-resistant cast-steel housings, nickel-alloy turbines', specs: [['Units', '2'], ['Type', 'Mono-scroll'], ['Wastegate', 'Electric'], ['Max rpm', '≈200,000']] },
+  fluids:  { at: [-0.62, 0.88, 1.32], r: [0.25, 0.15, 0.3], kicker: 'Service', name: 'Fluid reservoirs', view: [-0.6, 1, 0.5],
+    text: 'Coolant and washer reservoirs with yellow caps, easy to reach for servicing.',
+    made: 'Polypropylene tanks', specs: [['Coolant', 'Closed loop'], ['Caps', 'Colour-coded'], ['Access', 'Tool-free'], ['Checks', 'Sensor']] },
+};
+const INFO = { ...PARTS, ...SPOTS };
+const TOUR = ['s58', 'turbo', 'intake', 'cooling', 'brace', 'fluids', 'hood', 'brakes', 'wheels', 'headlights', 'front', 'seats', 'cabin', 'doors', 'roof', 'wing', 'trunk', 'rear', 'taillights', 'glass', 'shell'];
+
+// real photos (Wikimedia Commons, openly licensed) shown on each part's card
+const PHOTOS = { s58: 'engine', turbo: 'turbo', intake: 'engine2', cooling: 'front', brace: 'strut', fluids: 'engine3', hood: 'engine3',
+  wheels: 'wheel', brakes: 'ceramic', seats: 'interior5', cabin: 'interior14', front: 'front', headlights: 'front', taillights: 'taillight',
+  rear: 'rear', trunk: 'rear', wing: 'wing', doors: 'side', roof: 'side', glass: 'interior12', shell: 'side' };
+const CREDITS = {
+  engine: ['Wikisympathisant', 'CC BY-SA 4.0', 'File%3A2023-04-08_BMW_S58_straight-6-engine.jpg'],
+  engine2: ['Wikisympathisant', 'CC BY-SA 4.0', 'File%3A2023-04-08_BMW_S58_straight-6-engine_2nd-view.jpg'],
+  engine3: ['Wikisympathisant', 'CC BY-SA 4.0', 'File%3A2023-04-08_BMW_S58_straight-6-engine_3rd_view.jpg'],
+  turbo: ['Tommi Nummelin', 'CC BY-SA 3.0', 'File%3ASectioned_Garrett_AiResearch_turbocharger.JPG'],
+  strut: ['Liftarn', 'CC BY 3.0', 'File%3A96strutbar.jpg'],
+  wheel: ['Tokumeigakarinoaoshima', 'CC BY-SA 4.0', 'File%3AThe_tire_wheel_of_BMW_M4_Coup%C3%A9_Competition_M_xDrive_(G82)_with_M_Performance_Parts.jpg'],
+  ceramic: ['Julian Herzog', 'CC BY 4.0', 'File%3ACarbon_ceramic_brake_surface_detail_2014_01.jpg'],
+  interior5: ['Damian B Oh', 'CC BY-SA 4.0', 'File%3ABMW_G82_M4_Competition_Extended_Merino_Leather_Kyalami_Orange_Black_(5).jpg'],
+  interior12: ['Damian B Oh', 'CC BY-SA 4.0', 'File%3ABMW_G82_M4_Competition_Extended_Merino_Leather_Kyalami_Orange_Black_(12).jpg'],
+  interior14: ['Damian B Oh', 'CC BY-SA 4.0', 'File%3ABMW_G82_M4_Competition_Extended_Merino_Leather_Kyalami_Orange_Black_(14).jpg'],
+  front: ['LuvsMG481', 'CC BY-SA 4.0', 'File%3A2021_BMW_M4_Competition_G82_front.jpg'],
+  rear: ['Tokumeigakarinoaoshima', 'CC BY-SA 4.0', 'File%3ABMW_M4_Competition_Coup%C4%93_(G82)_rear.jpg'],
+  taillight: ['Tokumeigakarinoaoshima', 'CC BY-SA 4.0', 'File%3AThe_rear_light_of_BMW_M4_Coup%C3%A9_Competition_M_xDrive_(G82)_with_M_Performance_Parts.jpg'],
+  wing: ['Duboyong', 'CC BY-SA 4.0', 'File%3AG8M_WING_1.jpg'],
+  side: ['M3C30', 'CC BY-SA 4.0', 'File%3AG82-M4Competition-FrontSide_Black.jpg'],
+};
+const partOf = o => { while (o && !o.userData.part) o = o.parent; return o ? o.userData.part : null; };
+
+/* ============================================================
+   Explode layout (car space offsets) — applied to the part groups
+   ============================================================ */
+const EXPLODE = [];
+function explodable(obj, offset, delay, rot = [0, 0, 0]) {
+  EXPLODE.push({ obj, base: obj.position.clone(), baseRot: obj.rotation.clone(), off: V3(...offset), rot, delay });
+}
+function applyExplode(e) {
+  for (const it of EXPLODE) {
+    const k = easeInOut(clamp((e - it.delay * 0.45) / 0.55, 0, 1));
+    it.obj.position.copy(it.base).addScaledVector(it.off, k);
+    it.obj.rotation.set(it.baseRot.x + it.rot[0] * k, it.baseRot.y + it.rot[1] * k, it.baseRot.z + it.rot[2] * k);
+  }
+}
+function setupExplode() {
+  const P = k => PARTGROUPS[k] && PARTGROUPS[k].outer;
+  const add = (k, off, d, rot) => { if (P(k)) explodable(P(k), off, d, rot); };
+  add('roof', [0, 2.5, -0.1], 0);
+  add('glass', [0, 1.95, 0], 0.05);
+  add('hood', [0, 1.75, 0.45], 0.02, [0.25, 0, 0]);
+  add('wing', [0, 1.9, -1.1], 0.03);
+  add('trunk', [0, 1.35, -0.75], 0.07);
+  add('doorL', [1.55, 0.3, 0.1], 0.12, [0, 0.25, 0]);
+  add('doorR', [-1.55, 0.3, 0.1], 0.12, [0, -0.25, 0]);
+  add('front', [0, 0.05, 1.45], 0.14);
+  add('headlights', [0, 0.45, 1.15], 0.16);
+  add('rear', [0, 0.02, -1.45], 0.15);
+  add('taillights', [0, 0.45, -1.15], 0.17);
+  add('seats', [0, 1.35, -0.1], 0.2);
+  add('cabin', [0, 0.85, 0], 0.22);
+  for (let i = 0; i < 4; i++) {
+    const sx = Math.sign(WHEEL_CENTERS[i].x);
+    add('tyre' + i, [sx * 1.55, 0, 0], 0.24);
+    add('wheel' + i, [sx * 1.3, 0, 0], 0.26);
+    add('disc' + i, [sx * 0.98, 0, 0], 0.28);
+    add('brake' + i, [sx * 0.7, 0, 0], 0.3);
+  }
+  // the engine flies up, and its pieces spread apart so you can see every detail
+  const ec = V3(0, 0.72, 1.5);
+  ENGINE_BITS.forEach((b, i) => {
+    const d = b.outer.position.clone().sub(ec);
+    d.y = Math.max(0, d.y);
+    const off = d.normalize().multiplyScalar(0.55).add(V3(0, 1.15, 0.25));
+    explodable(b.outer, off.toArray(), 0.3 + (i % 7) * 0.025);
+  });
+}
+
+/* Exploded-view labels: [name, detail, part key, offset from part centre, side] */
+const ANATOMY = [
+  ['Carbon roof', 'CFRP', 'roof', [0, 0.08, 0], 'r'],
+  ['Glasshouse', 'Acoustic glass', 'glass', [-0.55, 0.1, 0.4], 'l'],
+  ['Bonnet', 'Aluminium', 'hood', [0.2, 0.15, 0.7], 'r'],
+  ['Rear wing', 'CFRP swan-neck', 'wing', [-0.6, 0.05, 0], 'l'],
+  ['S58 engine', '3.0 L · 510 PS', 'eng:core', [0.3, 0.3, 0], 'r'],
+  ['Doors', 'Frameless', 'doorL', [0.1, 0.3, 0], 'r'],
+  ['Kidney grille', 'Front apron', 'front', [0.3, 0.1, 0.1], 'r'],
+  ['LED headlights', 'Adaptive', 'headlights', [-0.6, 0.05, 0], 'l'],
+  ['Seats', 'M Carbon buckets', 'seats', [0.4, 0.3, 0], 'r'],
+  ['Forged wheels', '19" / 20"', 'wheel0', [0.1, 0.35, 0], 'r'],
+];
+
+/* ============================================================
+   Scroll views (camera orbits the car). az = 0 looks at the nose,
+   positive az swings towards the car's left side.
+   ============================================================ */
+const VIEWS = [
+  { az: 0.72, el: 0.12, dist: 10.2, t: [0, 0.62, 0],     shift: 0.14,  spin: 1, hood: 0, drive: 0 },  // hero
+  { az: 1.5708, el: 0.04, dist: 8.6, t: [0, 0.6, 0],     shift: 0.0,   spin: 0, hood: 0, drive: 0, lift: -0.2 }, // design (profile)
+  { az: 0.38, el: 0.72, dist: 4.9, t: [0, 0.8, 1.45],    shift: 0.18,  spin: 0, hood: 1, drive: 0 },  // under the bonnet
+  { az: 0.8,  el: 0.42, dist: 15.5, t: [0, 1.3, 0],      shift: 0,     spin: 0, hood: 0, drive: 0 },  // anatomy
+  { az: 1.28, el: 0.1,  dist: 3.5, t: [0.85, 0.38, 1.53], shift: 0.2,  spin: 0, hood: 0, drive: 0.2 }, // wheels
+  { az: 2.55, el: 0.12, dist: 9.8, t: [0, 0.62, 0],     shift: -0.16, spin: 0, hood: 0, drive: 0 },  // performance (rear 3/4)
+  { az: -0.7, el: 0.1,  dist: 10.4, t: [0, 0.62, 0],    shift: -0.22, spin: 0, hood: 0, drive: 0 },  // technical data (front 3/4, car on the left)
+  { az: 0.95, el: 0.2,  dist: 10.6, t: [0, 0.62, 0],    shift: 0.16,  spin: 1, hood: 0, drive: 0 },  // configure
+];
+const BAY_VIEW = { az: 0.38, el: 0.72, dist: 4.9, t: [0, 0.8, 1.45] };
+const viewSections = $$('[data-view]');
+let sectionTops = [];
+const measure = () => { sectionTops = viewSections.map(s => s.offsetTop); };
+measure();
+function viewAtScroll() {
+  const y = scrollY;
+  let i = 0;
+  while (i < sectionTops.length - 1 && y >= sectionTops[i + 1]) i++;
+  const a = VIEWS[i], b = VIEWS[Math.min(i + 1, VIEWS.length - 1)];
+  let t = 0;
+  if (i < sectionTops.length - 1) {
+    const next = sectionTops[i + 1], start = Math.max(sectionTops[i], next - innerHeight);
+    t = clamp((y - start) / (next - start), 0, 1);
+  }
+  t = smooth(clamp((t - 0.12) / 0.76, 0, 1));
+  const v = {};
+  for (const k of ['az', 'el', 'dist', 'shift', 'spin', 'hood', 'drive']) v[k] = lerp(a[k], b[k], t);
+  v.lift = lerp(a.lift || 0, b.lift || 0, t);
+  v.t = V3(...a.t).lerp(V3(...b.t), t);
+  return v;
+}
+
+/* ============================================================
+   UI state
+   ============================================================ */
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2(-10, -10);
+const mouse = { x: 0, y: 0, tx: 0, ty: 0, px: 0, py: 0 };
+let pointerInside = false, pointerType = 'mouse', started = false, ready = false;
+let hoverKey = null, hoverPoint = V3(), focusKey = null, focusScroll = 0;
+let hoodWanted = false, hoodOpen = 0, explode = 0, btnExplode = 0, btnTarget = 0, driveOn = false, drive = 0, liveryOn = true;
+const tipEl = $('#tip');
+
+function groupsFor(key) {
+  if (key === 's58') return [PARTGROUPS['eng:core']].filter(Boolean); // the rest of the bay also reports "s58", but only the engine itself lights up / pops out
+  return Object.values(PARTGROUPS).filter(pg => pg.outer.userData.part === key);
+}
+const meshesFor = key => groupsFor(key).flatMap(pg => pg.meshes);
+function pick(v) {
+  raycaster.setFromCamera(v, camera);
+  const hits = raycaster.intersectObject(car, true);
+  for (const h of hits) {
+    const k = partOf(h.object);
+    if (!k) continue;
+    if (k === 'glass' || h.object.material.transparent && k !== 'hood') continue;
+    return { key: k, point: h.point };
+  }
+  return null;
+}
+let hoverMeshes = [];
+function setHover(key) {
+  if (key === hoverKey) return;
+  hoverMeshes.forEach(m => m.layers.disable(2));
+  hoverKey = key;
+  hoverMeshes = key ? meshesFor(key) : [];
+  hoverMeshes.forEach(m => m.layers.enable(2));
+  if (key) {
+    $('b', tipEl).textContent = INFO[key].name;
+    $('#tipHint').textContent = key === 'hood' ? (hoodWanted ? 'Click to close the bonnet' : 'Click to open the bonnet') : 'Click to inspect';
+  }
+  tipEl.classList.toggle('on', !!key);
+}
+
+addEventListener('pointermove', e => {
+  pointerType = e.pointerType || 'mouse';
+  mouse.tx = (e.clientX / innerWidth) * 2 - 1;
+  mouse.ty = -((e.clientY / innerHeight) * 2 - 1);
+  mouse.px = e.clientX; mouse.py = e.clientY;
+  ndc.set(mouse.tx, mouse.ty);
+  pointerInside = true;
+});
+document.documentElement.addEventListener('mouseleave', () => { pointerInside = false; setHover(null); });
+addEventListener('click', e => {
+  if (!started || insideAmt > 0.01 || e.target.closest('a, button, .interactive, .spot')) return;
+  if (showDragged) { showDragged = false; return; } // that was a drag to rotate, not a click
+  if (focusKey) { setFocus(null); return; }
+  if (explode > 0.05) return;
+  const hit = pick(new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -((e.clientY / innerHeight) * 2 - 1)));
+  if (!hit) return;
+  if (hit.key === 'hood') setHood(!hoodWanted);
+  else setFocus(hit.key);
+});
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') setFocus(null);
+  if (focusKey && e.key === 'ArrowRight') stepFocus(1);
+  if (focusKey && e.key === 'ArrowLeft') stepFocus(-1);
+});
+
+/* ============================================================
+   Showcase: the chosen part is lifted out of the car (leaving a gap),
+   flies to the middle of the screen and turns slowly while the card
+   explains it. Closing sends it back into place.
+   ============================================================ */
+const showScene = new THREE.Scene();
+showScene.environment = scene.environment;
+const showKey = new THREE.DirectionalLight(0xffffff, 2.4), showRim = new THREE.DirectionalLight(0xa8ccff, 2.0);
+showScene.add(new THREE.HemisphereLight(0xc9d6e4, 0x0b0b0b, 0.6), showKey, showRim, showKey.target, showRim.target);
+const show = { root: new THREE.Group(), items: [], t: 0, dir: 0, from: V3(), R: 1, spin: 0, hidden: [] };
+showScene.add(show.root);
+// soft "stage light" behind the part so dark carbon pieces still stand out
+const stageGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: canvasTexture(256, 256, (ctx, w) => {
+    const g = ctx.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+    g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.4, 'rgba(255,255,255,0.35)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, w);
+  }),
+  color: '#7f95b8', transparent: true, opacity: 0, depthWrite: false, depthTest: false,
+}));
+stageGlow.renderOrder = -1;
+showScene.add(stageGlow);
+const showLabelsEl = $('#showLabels');
+
+// what pops out for each part; several items = laid out side by side facing you, each labelled
+const CORNER = [
+  ['tyre0', 'Tyre', '275/35 R19 performance'],
+  ['wheel0', 'Forged M wheel', '19-inch Y-spoke'],
+  ['disc0', 'Carbon-ceramic disc', '400 mm, cross-drilled'],
+  ['brake0', '6-piston caliper', 'Fixed, lightweight aluminium'],
+];
+function showItems(key) {
+  const G = k => PARTGROUPS[k];
+  if (key === 'brakes' || key === 'wheels') return CORNER.map(([k, a, b]) => ({ groups: [G(k)], label: [a, b] }));
+  if (key === 'doors') return [{ groups: [G('doorL')] }];
+  return [{ groups: groupsFor(key) }];
+}
+function clearShow() {
+  show.hidden.forEach(o => { o.visible = true; });
+  show.hidden = [];
+  show.root.clear();
+  show.items = [];
+  showLabelsEl.innerHTML = '';
+  show.t = 0; show.dir = 0;
+}
+function openShow(key) {
+  clearShow();
+  const defs = showItems(key).map(d => ({ ...d, groups: d.groups.filter(Boolean) })).filter(d => d.groups.length);
+  if (!defs.length) return;
+  car.updateMatrixWorld(true);
+  const carInv = car.matrixWorld.clone().invert();
+  // everything is built in car space, so the stage controls orientation completely
+  const all = new THREE.Box3(), tmpBox = new THREE.Box3();
+  const itemBoxes = defs.map(d => {
+    const b = new THREE.Box3();
+    d.groups.forEach(pg => pg.meshes.forEach(m => {
+      m.geometry.computeBoundingBox();
+      tmpBox.copy(m.geometry.boundingBox).applyMatrix4(carInv.clone().multiply(m.matrixWorld));
+      b.union(tmpBox);
+    }));
+    all.union(b);
+    return b;
+  });
+  const c = all.getCenter(V3());
+  show.layout = defs.length > 1;
+  let x = 0;
+  const gap = 0.3;
+  defs.forEach((d, i) => {
+    const ib = itemBoxes[i], ic = ib.getCenter(V3()), size = ib.getSize(V3());
+    const g = new THREE.Group();
+    const toItem = new THREE.Matrix4().makeTranslation(-ic.x, -ic.y, -ic.z).multiply(carInv);
+    for (const pg of d.groups) {
+      pg.outer.visible = false; // leaves a real gap in the car
+      show.hidden.push(pg.outer);
+      for (const m of pg.meshes) {
+        const cl = new THREE.Mesh(m.geometry, m.material);
+        cl.renderOrder = m.renderOrder;
+        toItem.clone().multiply(m.matrixWorld).decompose(cl.position, cl.quaternion, cl.scale);
+        g.add(cl);
+      }
+    }
+    show.root.add(g);
+    const width = Math.max(size.z, 0.45); // seen face-on, a wheel part's width is its car-space depth
+    let el = null;
+    if (d.label) {
+      el = document.createElement('div');
+      el.className = 'plabel';
+      el.innerHTML = `<b>${d.label[0]}</b><i>${d.label[1]}</i>`;
+      showLabelsEl.appendChild(el);
+    }
+    show.items.push({ g, el, home: ic.clone().sub(c), x: x + width / 2, top: size.y / 2, h: size.y });
+    x += width + gap;
+  });
+  const total = x - gap;
+  show.items.forEach(it => { it.x -= total / 2; });
+  const maxH = Math.max(...show.items.map(it => it.h));
+  show.R = show.layout ? Math.max(total / 2 * 0.72, maxH / 2 + 0.08) : Math.max(all.getBoundingSphere(new THREE.Sphere()).radius, 0.18);
+  show.from.copy(car.localToWorld(c.clone()));
+  show.yaw = show.pitch = show.yawT = show.pitchT = 0;
+  const hint = document.createElement('div');
+  hint.className = 'show-hint';
+  hint.textContent = 'Drag to rotate · click outside to put it back';
+  showLabelsEl.appendChild(hint);
+  show.dir = 1;
+}
+const closeShow = () => { if (show.items.length) show.dir = -1; };
+
+// drag to rotate the showcased part (no automatic spinning)
+let showDrag = null, showDragged = false;
+addEventListener('pointerdown', e => {
+  if (!show.items.length || show.dir < 0 || e.target.closest('a, button, .interactive, .spot')) return;
+  showDrag = { x: e.clientX, y: e.clientY, moved: 0 };
+  document.body.classList.add('grabbing');
+});
+addEventListener('pointermove', e => {
+  if (!showDrag) return;
+  const dx = e.clientX - showDrag.x, dy = e.clientY - showDrag.y;
+  showDrag.x = e.clientX; showDrag.y = e.clientY;
+  showDrag.moved += Math.abs(dx) + Math.abs(dy);
+  show.yawT += dx * 0.009;
+  show.pitchT = clamp(show.pitchT + dy * 0.006, -1.2, 1.2);
+});
+addEventListener('pointerup', () => {
+  if (!showDrag) return;
+  showDragged = showDrag.moved > 6; // a drag is not a click
+  showDrag = null;
+  document.body.classList.remove('grabbing');
+});
+
+const showTmp = { fwd: V3(), right: V3(), up: V3(), T: V3(), q: new THREE.Quaternion(), qa: new THREE.Quaternion(), qb: new THREE.Quaternion(), flat: V3(), inv: new THREE.Quaternion() };
+function updateShow(dt, mobile) {
+  if (!show.items.length) return 0;
+  show.t = SNAP ? (show.dir > 0 ? 1 : 0) : clamp(show.t + show.dir * dt / 0.9, 0, 1);
+  if (show.dir < 0 && show.t === 0) { clearShow(); return 0; }
+  const e = easeInOut(show.t), { fwd, right, up, T, q, qa, qb, flat, inv } = showTmp;
+  camera.getWorldDirection(fwd);
+  right.crossVectors(fwd, camera.up).normalize();
+  up.crossVectors(right, fwd).normalize();
+  // stage: in front of the camera, left of centre (the card sits on the right)
+  const D = 3.2, halfH = D * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  T.copy(camera.position).addScaledVector(fwd, D)
+    .addScaledVector(right, mobile ? 0 : -halfH * camera.aspect * (show.layout ? 0.3 : 0.22))
+    .addScaledVector(up, mobile ? halfH * 0.3 : -halfH * 0.02);
+  show.root.position.lerpVectors(show.from, T, e).addScaledVector(up, Math.sin(e * Math.PI) * 0.3);
+  show.root.scale.setScalar(lerp(1, (halfH * (mobile ? 0.5 : show.layout ? 0.56 : 0.66)) / show.R, e));
+  // orientation: start as it sits in the car, end facing you (+ whatever you drag)
+  show.yaw = damp(show.yaw, show.yawT, 10, dt);
+  show.pitch = damp(show.pitch, show.pitchT, 10, dt);
+  const carQ = car.getWorldQuaternion(qa);
+  if (show.layout) { // wheel parts: outer face (car +X) towards the camera
+    flat.set(-fwd.x, 0, -fwd.z).normalize();
+    q.setFromUnitVectors(V3(1, 0, 0), flat);
+  } else q.copy(carQ);
+  qb.setFromAxisAngle(V3(0, 1, 0), show.yaw);
+  q.premultiply(qb);
+  qb.setFromAxisAngle(right, show.pitch);
+  q.premultiply(qb);
+  show.root.quaternion.slerpQuaternions(carQ, q, e);
+  // parts travel from their place in the car to a row across the screen
+  inv.copy(show.root.quaternion).invert();
+  for (const it of show.items) {
+    const slot = right.clone().multiplyScalar(it.x).applyQuaternion(inv);
+    const home = it.home.clone().applyQuaternion(carQ).applyQuaternion(inv);
+    it.g.position.lerpVectors(home, show.layout ? slot : V3(), e);
+    if (show.layout) { // each part turns on its own, the row stays put
+      it.g.quaternion.setFromAxisAngle(V3(0, 1, 0), 0);
+    }
+  }
+  showKey.position.copy(camera.position).addScaledVector(right, 3).addScaledVector(up, 4);
+  showRim.position.copy(T).addScaledVector(fwd, 3).addScaledVector(up, 2).addScaledVector(right, -2.5);
+  stageGlow.position.copy(T).addScaledVector(fwd, 1.2);
+  stageGlow.scale.setScalar(halfH * 2.6);
+  stageGlow.material.opacity = e * 0.45;
+  showKey.target.position.copy(show.root.position);
+  showRim.target.position.copy(show.root.position);
+  show.root.updateMatrixWorld(true);
+  for (const it of show.items) {
+    if (!it.el) continue;
+    const below = show.items.indexOf(it) % 2 === 1; // alternate above / below so neighbours never collide
+    const p = it.g.getWorldPosition(V3()).addScaledVector(up, (below ? -1 : 1) * (it.top * show.root.scale.x + 0.05)).project(camera);
+    it.el.classList.toggle('below', below);
+    it.el.style.transform = `translate3d(${(p.x + 1) / 2 * innerWidth}px, ${(1 - p.y) / 2 * innerHeight}px, 0) translate(-50%, ${below ? '0' : '-100%'})`;
+    it.el.style.opacity = clamp((e - 0.7) / 0.3, 0, 1);
+  }
+  const hint = showLabelsEl.querySelector('.show-hint');
+  if (hint) hint.style.opacity = clamp((e - 0.7) / 0.3, 0, 1);
+  return e;
+}
+
+/* Inspect = showcase + info card */
+const inspector = $('#inspector');
+function setFocus(key) {
+  focusKey = key;
+  focusScroll = scrollY;
+  document.body.classList.toggle('inspecting', !!key);
+  if (!key) { inspector.classList.remove('on'); closeShow(); return; }
+  setHover(null);
+  const info = INFO[key];
+  openShow(key);
+  $('#inKicker').textContent = info.kicker;
+  $('#inName').textContent = info.name;
+  $('#inText').textContent = info.text;
+  $('#inMade').textContent = info.made;
+  $('#inSpecs').innerHTML = info.specs.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  const opt = cardOptions(key);
+  $('#inOptions').hidden = !opt;
+  if (opt) {
+    $('#inOptionsLabel').textContent = opt.label;
+    $('#inOptionsRow').innerHTML = Object.entries(opt.set).map(([k, s]) =>
+      `<button class="opt${k === opt.current ? ' active' : ''}" data-${opt.attr}="${k}" style="--c:${s.color}" aria-label="${s.name}" title="${s.name}"></button>`).join('');
+    $('#inOptionsName').textContent = opt.set[opt.current] ? opt.set[opt.current].name : '';
+  }
+  const photo = PHOTOS[key], cr = CREDITS[photo];
+  $('#inPhotoWrap').hidden = !photo;
+  if (photo) {
+    $('#inPhoto').src = `images/${photo}.jpg`;
+    $('#inCredit').innerHTML = `Photo: ${cr[0]}, <a href="https://commons.wikimedia.org/wiki/${cr[2]}" target="_blank" rel="noopener">${cr[1]}</a> · Wikimedia Commons`;
+  }
+  $('#inCount').textContent = TOUR.includes(key) ? `${TOUR.indexOf(key) + 1} / ${TOUR.length}` : '';
+  // exhaust: let people hear it straight from the card
+  $('#listenBtn').hidden = !['rear', 'taillights', 's58'].includes(key);
+  inspector.classList.add('on');
+}
+function stepFocus(d) {
+  const i = TOUR.indexOf(focusKey);
+  setFocus(TOUR[(i + d + TOUR.length) % TOUR.length]);
+}
+$('#inClose').addEventListener('click', () => setFocus(null));
+$('#inPrev').addEventListener('click', () => stepFocus(-1));
+$('#inNext').addEventListener('click', () => stepFocus(1));
+
+/* Engine-bay hotspots */
+const spotsEl = $('#spots');
+const spotEls = Object.entries(SPOTS).map(([k, s]) => {
+  const el = document.createElement('button');
+  el.className = 'spot';
+  el.innerHTML = `<i class="ring"></i><span>${s.name}</span>`;
+  el.addEventListener('click', e => { e.stopPropagation(); setFocus(k); });
+  spotsEl.appendChild(el);
+  return { el, at: V3(...s.at) };
+});
+
+/* Buttons */
+function setHood(on) {
+  hoodWanted = on;
+  if (on) { setExploded(false); }
+  $('#hoodBtn').classList.toggle('on', on);
+  $('#hoodText').textContent = on ? 'Close bonnet' : 'Open bonnet';
+}
+function setExploded(on) {
+  btnTarget = on ? 1 : 0;
+  if (on) { setFocus(null); setHood(false); }
+  $('#explodeText').textContent = on ? 'Put it back together' : 'Take it apart';
+  $('#explodeBtn').classList.toggle('on', on);
+}
+// Start engine = the synthesised S58 fires up; revving spins the wheels on the "rolling road"
+function setDrive(on) {
+  driveOn = on;
+  if (on) engineSound.start(); else { engineSound.stop(); revOff(); }
+  $('#driveBtn').classList.toggle('on', on);
+  $('#driveText').textContent = on ? 'Stop engine' : 'Start engine';
+  $('#enginePanel').hidden = !on;
+}
+$('#hoodBtn').addEventListener('click', () => setHood(!hoodWanted));
+$('#explodeBtn').addEventListener('click', () => setExploded(btnTarget === 0));
+$('#driveBtn').addEventListener('click', () => setDrive(!driveOn));
+$('#liveryBtn').addEventListener('click', () => {
+  liveryOn = !liveryOn;
+  $('#liveryBtn').classList.toggle('on', liveryOn);
+  // the livery is part of the body surface, so "off" repaints it in the body colour instead of hiding it
+  if (matLivery) {
+    matLivery.userData.map = matLivery.userData.map || matLivery.map;
+    matLivery.map = liveryOn ? matLivery.userData.map : null;
+    if (liveryOn) { matLivery.color.set('#ffffff'); matLivery.metalness = 0; matLivery.roughness = 0.25; }
+    matLivery.needsUpdate = true;
+  }
+});
+
+const swatchesEl = $('#swatches'), configEl = $('#configList');
+Object.entries(PAINTS).forEach(([k, p]) => {
+  swatchesEl.insertAdjacentHTML('beforeend', `<button class="swatch" data-paint="${k}" style="--c:${p.color}" aria-label="${p.name}"></button>`);
+  configEl.insertAdjacentHTML('beforeend', `<button data-paint="${k}" style="--c:${p.color}"><i></i>${p.name}</button>`);
+});
+const glowMat = new THREE.MeshBasicMaterial({ color: paint.accent, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false });
+function applyPaint(k) {
+  paint = PAINTS[k];
+  paintTarget.color.set(paint.color); paintTarget.metal = paint.metal; paintTarget.rough = paint.rough;
+  glowMat.color.set(paint.accent);
+  const r = document.documentElement.style;
+  r.setProperty('--accent', paint.accent); r.setProperty('--accent-rgb', paint.rgb);
+  $('#paintName').textContent = paint.name;
+  $$('[data-paint]').forEach(b => b.classList.toggle('active', b.dataset.paint === k));
+}
+$$('[data-paint]').forEach(b => b.addEventListener('click', () => applyPaint(b.dataset.paint)));
+
+/* ============================================================
+   Configurator: seat upholstery and brake calipers (also offered on the part cards)
+   ============================================================ */
+const SEAT_COLORS = {
+  black:   { name: 'Black Merino', color: '#3b3c40' },
+  orange:  { name: 'Kyalami Orange / Black', color: '#d46a2c' },
+  blue:    { name: 'Yas Marina Blue / Black', color: '#2f6fd6' },
+  silver:  { name: 'Silverstone / Black', color: '#cfc8b8' },
+  red:     { name: 'Fiona Red / Black', color: '#9b2230' },
+};
+const CALIPER_COLORS = {
+  gold:  { name: 'Gold (M Carbon ceramic)', color: '#b98a3e' },
+  blue:  { name: 'M Blue', color: '#1f5fd6' },
+  red:   { name: 'M Red', color: '#c4161c' },
+  black: { name: 'High-gloss black', color: '#151515' },
+};
+let seatChoice = 'orange', caliperChoice = 'gold';
+const seatMats = [];
+let matCaliper = null;
+function prepareConfigMaterials() {
+  // the seats get their own copies of the leather material so tinting them leaves the dashboard alone
+  // (material names can be merged by compression, so go by part, not by name)
+  const carbonShell = new THREE.MeshPhysicalMaterial({ color: '#141518', metalness: 0.35, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.06 });
+  groupsFor('seats').forEach(pg => pg.meshes.forEach(m => {
+    if (/white4/.test(m.material.name)) { m.material = carbonShell; return; } // the shells: M Carbon, gloss carbon finish
+    m.material = m.material.clone();
+    seatMats.push(m.material);
+  }));
+  for (const m of matCache.values()) if (/Caliper/.test(m.name)) matCaliper = m;
+}
+function applySeat(k) {
+  seatChoice = k;
+  seatMats.forEach(m => m.color.set(SEAT_COLORS[k].color));
+  $$('[data-seat]').forEach(b => b.classList.toggle('active', b.dataset.seat === k));
+  if (focusKey === 'seats') $('#inOptionsName').textContent = SEAT_COLORS[k].name;
+}
+function applyCaliper(k) {
+  caliperChoice = k;
+  if (matCaliper) matCaliper.color.set(CALIPER_COLORS[k].color);
+  $$('[data-caliper]').forEach(b => b.classList.toggle('active', b.dataset.caliper === k));
+  if (focusKey === 'brakes' || focusKey === 'wheels') $('#inOptionsName').textContent = CALIPER_COLORS[k].name;
+}
+const seatListEl = $('#seatList'), caliperListEl = $('#caliperList');
+Object.entries(SEAT_COLORS).forEach(([k, s]) => seatListEl.insertAdjacentHTML('beforeend', `<button data-seat="${k}" style="--c:${s.color}"><i></i>${s.name}</button>`));
+Object.entries(CALIPER_COLORS).forEach(([k, s]) => caliperListEl.insertAdjacentHTML('beforeend', `<button data-caliper="${k}" style="--c:${s.color}"><i></i>${s.name}</button>`));
+// configurator camera: choosing calipers flies to the front wheel, choosing seats opens the door and looks in
+const CFG_VIEWS = {
+  caliper: { az: 1.22, el: 0.08, dist: 2.6, t: [0.85, 0.4, 1.53] },
+  seat:    { az: 1.15, el: 0.38, dist: 3.1, t: [0.25, 0.88, -0.25] },
+};
+let cfgKey = null, cfgAmt = 0, cfgScroll = 0;
+function setCfgView(k) { cfgKey = k; cfgScroll = scrollY; }
+document.addEventListener('click', e => {
+  const s = e.target.closest('[data-seat]'), c = e.target.closest('[data-caliper]'), p = e.target.closest('.opt[data-paint]');
+  if (s) applySeat(s.dataset.seat);
+  if (c) applyCaliper(c.dataset.caliper);
+  if (e.target.closest('#seatList')) setCfgView('seat');
+  if (e.target.closest('#caliperList')) setCfgView('caliper');
+  if (e.target.closest('#configList, #swatches')) setCfgView(null);
+  if (p) { applyPaint(p.dataset.paint); $('#inOptionsName').textContent = PAINTS[p.dataset.paint].name; }
+});
+// which options appear on a part's card
+function cardOptions(key) {
+  if (key === 'seats') return { label: 'Upholstery', attr: 'seat', set: SEAT_COLORS, current: seatChoice };
+  if (key === 'brakes' || key === 'wheels') return { label: 'Caliper colour', attr: 'caliper', set: CALIPER_COLORS, current: caliperChoice };
+  if (['shell', 'doors', 'hood', 'trunk', 'front'].includes(key)) return { label: 'Paint', attr: 'paint', set: PAINTS, current: Object.keys(PAINTS).find(k => PAINTS[k] === paint) };
+  return null;
+}
+
+/* ============================================================
+   Engine sound — synthesised live with Web Audio. A straight-six fires
+   three times per crank revolution, so the fundamental is rpm / 20 Hz.
+   Starter whine -> catch & flare -> lumpy idle; hold to rev to the
+   limiter; overrun crackle from the Sport exhaust.
+   ============================================================ */
+const engineSound = {
+  ctx: null, on: false, rpm: 0, rev: false, sport: true, plus: false, load: 0, lastRpm: 0, lastPop: 0, blipUntil: 0, catchAt: 0,
+  init() {
+    const ctx = this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const bus = this.bus = ctx.createDynamicsCompressor();
+    bus.threshold.value = -16; bus.ratio.value = 4;
+    bus.connect(ctx.destination);
+    const cut = this.cut = ctx.createGain(); cut.gain.value = 1; cut.connect(bus); // ignition cut on gear changes
+    const out = this.out = ctx.createGain(); out.gain.value = 0; out.connect(cut);
+    const shaper = ctx.createWaveShaper();
+    shaper.curve = Float32Array.from({ length: 1024 }, (_, i) => Math.tanh(5 * (i / 511.5 - 1)) / Math.tanh(5));
+    shaper.oversample = '4x';
+    const lp = this.lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 1.1;
+    const boom = this.boom = ctx.createBiquadFilter(); boom.type = 'peaking'; boom.gain.value = 7; boom.Q.value = 1.3; // silencer resonance
+    shaper.connect(lp).connect(boom).connect(out);
+    this.harm = [[1, 'sawtooth', 0.42], [0.5, 'triangle', 0.34], [1.5, 'square', 0.07], [2, 'sawtooth', 0.13], [3, 'sine', 0.05]].map(([m, type, g]) => {
+      const o = ctx.createOscillator(); o.type = type;
+      const gn = ctx.createGain(); gn.gain.value = g;
+      o.connect(gn).connect(shaper); o.start();
+      return { o, m };
+    });
+    const nb = this.noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const d = nb.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource(); noise.buffer = nb; noise.loop = true;
+    const bp = this.bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.7;
+    const ng = ctx.createGain(); ng.gain.value = 0.07;
+    const pulse = this.pulse = ctx.createOscillator(); pulse.type = 'square';
+    const pg = ctx.createGain(); pg.gain.value = 0.06;
+    pulse.connect(pg).connect(ng.gain); pulse.start();
+    noise.connect(bp).connect(ng).connect(shaper); noise.start();
+    // intake roar under load (air rushing into the turbos)
+    const intake = ctx.createBufferSource(); intake.buffer = nb; intake.loop = true; intake.playbackRate.value = 0.7;
+    const ilp = this.intakeLp = ctx.createBiquadFilter(); ilp.type = 'lowpass'; ilp.Q.value = 2;
+    const ig = this.intakeGain = ctx.createGain(); ig.gain.value = 0;
+    intake.connect(ilp).connect(ig).connect(out); intake.start();
+    const turbo = this.turbo = ctx.createOscillator(); turbo.type = 'sine';
+    const tg = this.turboGain = ctx.createGain(); tg.gain.value = 0;
+    turbo.connect(tg).connect(out); turbo.start();
+    const lope = ctx.createOscillator(); lope.frequency.value = 2.3;
+    const lg = this.lopeGain = ctx.createGain(); lg.gain.value = 0;
+    lope.connect(lg); lope.start();
+    this.harm.forEach(h => lg.connect(h.o.detune));
+  },
+  to(param, v, tc = 0.03) { param.setTargetAtTime(v, this.ctx.currentTime, tc); },
+  start() {
+    if (!this.ctx) this.init();
+    this.ctx.resume();
+    if (this.on) return;
+    this.on = true;
+    const ctx = this.ctx, t = ctx.currentTime;
+    // electric starter for ~0.9 s
+    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 95;
+    const am = ctx.createOscillator(); am.frequency.value = 11;
+    const amg = ctx.createGain(); amg.gain.value = 0.1;
+    const g = ctx.createGain(); g.gain.value = 0.0001;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
+    am.connect(amg).connect(g.gain);
+    o.connect(f).connect(g).connect(this.bus);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + 0.08);
+    g.gain.setValueAtTime(0.16, t + 0.8); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+    o.frequency.linearRampToValueAtTime(140, t + 0.9);
+    o.start(t); am.start(t); o.stop(t + 1.05); am.stop(t + 1.05);
+    this.catchAt = t + 0.85;
+  },
+  stop() { this.on = false; this.rev = false; },
+  pop(big) {
+    const ctx = this.ctx, t = ctx.currentTime;
+    const s = ctx.createBufferSource(); s.buffer = this.noiseBuf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = big ? 650 : 1500 + Math.random() * 1800; f.Q.value = 1.1;
+    const g = ctx.createGain(), peak = big ? 0.8 : 0.25 + Math.random() * 0.3;
+    g.gain.setValueAtTime(peak, t); g.gain.exponentialRampToValueAtTime(0.001, t + (big ? 0.14 : 0.05));
+    s.connect(f).connect(g).connect(this.bus);
+    s.start(t, Math.random() * 1.5, 0.2);
+  },
+  // gear change: ignition cut + exhaust crack (up), rev-matched blip + crackle (down), plus a dull driveline clunk
+  shift(up) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    this.cut.gain.cancelScheduledValues(t);
+    this.cut.gain.setValueAtTime(up ? 0.18 : 0.6, t);
+    this.cut.gain.linearRampToValueAtTime(1, t + (up ? 0.13 : 0.2));
+    if (up) { this.pop(true); setTimeout(() => this.pop(false), 45); }
+    else setTimeout(() => this.pop(false), 60);
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.09);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    o.connect(g).connect(this.bus); o.start(t); o.stop(t + 0.12);
+  },
+  // turbo "flutter" when the throttle snaps shut at high boost
+  flutter() {
+    const ctx = this.ctx, t = ctx.currentTime;
+    const s = ctx.createBufferSource(); s.buffer = this.noiseBuf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1100; f.Q.value = 0.9;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+    for (let i = 0; i < 9; i++) { // chattering pulses, fading out
+      const at = t + i * 0.038, a = 0.22 * (1 - i / 9);
+      g.gain.setValueAtTime(a, at); g.gain.setValueAtTime(0.02, at + 0.02);
+    }
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+    s.connect(f).connect(g).connect(this.bus);
+    s.start(t, Math.random(), 0.45);
+  },
+  // "listen to the exhaust": start if needed, then three sharp blips
+  listen() {
+    this.start();
+    const at = Math.max(250, (this.catchAt - this.ctx.currentTime) * 1000 + 1500); // wait for the idle to settle
+    [0, 1100, 2200].forEach(ms => setTimeout(() => { this.blipUntil = this.ctx.currentTime + 0.32; }, at + ms));
+  },
+  update(dt) {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime, running = this.on && now >= this.catchAt;
+    const blip = now < this.blipUntil;
+    const prevLoad = this.load;
+    if (this.ext && running) {
+      // driving: rpm and throttle come from the gearbox simulation
+      this.rpm = this.ext.rpm;
+      this.load = damp(this.load, this.ext.load, 14, dt);
+    } else {
+      // cold start: flare to ~2,600, hold a high idle while "warming up", then settle to ~880
+      const since = now - this.catchAt;
+      const idle = since < 0.4 ? 2600 : since < 4.5 ? 1450 : since < 6.5 ? lerp(1450, 880, (since - 4.5) / 2) : 880;
+      let target = 0;
+      if (this.on) target = !running ? 170 : (this.rev || blip) ? 7150 : idle + Math.sin(now * 2.3) * 30;
+      const rising = target > this.rpm;
+      this.rpm += (target - this.rpm) * Math.min(1, dt * (rising ? (blip ? 10 : 3.4) : 2.1));
+      if (target === 7150 && this.rpm > 6950) this.rpm = 6950 + Math.random() * 250; // limiter bounce
+      this.load = damp(this.load, running && (this.rev || blip) ? 1 : 0, 12, dt);
+    }
+    if (running && prevLoad > 0.7 && this.load < 0.5 && this.rpm > 3200) this.flutter();
+    const rpm = this.rpm, f = Math.max(1, rpm / 20);
+    this.harm.forEach(h => this.to(h.o.frequency, f * h.m));
+    this.to(this.pulse.frequency, f);
+    this.to(this.bp.frequency, 300 + rpm * 0.35);
+    this.to(this.lp.frequency, (this.sport ? 380 : 280) + rpm * (this.sport ? 0.55 : 0.32) + this.load * (this.plus ? 1400 : 900));
+    this.to(this.boom.frequency, 80 + rpm * 0.02);
+    this.to(this.lopeGain.gain, rpm < 1400 ? 16 : 0);
+    const vol = running || rpm > 300 ? (0.2 + (rpm / 7200) * 0.35 + this.load * 0.15) * (this.sport ? 1 : 0.55) : 0;
+    this.to(this.out.gain, this.on ? vol : 0, this.on ? 0.05 : 0.35);
+    this.to(this.turbo.frequency, 1400 + rpm * 0.9);
+    this.to(this.turboGain.gain, running ? this.load * Math.min(1, rpm / 6000) * 0.018 : 0);
+    this.to(this.intakeLp.frequency, 300 + rpm * 0.12);
+    this.to(this.intakeGain.gain, running ? this.load * (0.05 + rpm / 7200 * 0.18) : 0);
+    // overrun crackle when lifting off from high revs (Sport exhaust only)
+    if (running && this.sport && this.load < 0.3 && rpm > 2400 && rpm < this.lastRpm && now - this.lastPop > 0.035 + Math.random() * (this.plus ? 0.07 : 0.13)) {
+      this.pop(Math.random() < 0.15); this.lastPop = now;
+    }
+    this.lastRpm = rpm;
+  },
+};
+
+/* ============================================================
+   Step inside: the driver's door swings open on its hinge, the camera
+   moves in through the doorway to the driver's seat, then the door closes.
+   Mouse = look around. Hotspots: steering wheel, cluster, screen, gear selector, seats.
+   ============================================================ */
+const EYE = V3(0.37, 1.12, -0.24), DOORWAY = V3(1.8, 1.15, 0.0), CABIN_LOOK = V3(0.15, 0.95, 0.2);
+let insideWanted = false, insideAmt = 0, doorOpen = 0, insideScroll = 0;
+const cabinLight = new THREE.PointLight(0xfff0dc, 0, 2.4, 1.6);
+cabinLight.position.set(0.1, 1.25, -0.05);
+car.add(cabinLight);
+cabinLight.layers.enable(2);
+const CABIN_INFO = {
+  mwheel:  { kicker: 'Interior', name: 'M steering wheel', photo: 'interior5',
+    text: 'Thick-rimmed leather wheel with carbon shift paddles. The red M1 and M2 buttons recall two complete set-ups you save in the M Setup menu: engine, chassis, steering, brakes, gearshift and traction.',
+    made: 'Walknappa leather rim, carbon-fibre paddles, aluminium spokes', specs: [['Buttons', 'M1 · M2 · M Setup'], ['Paddles', 'Carbon fibre'], ['Rim', 'Walknappa leather'], ['Heated', 'Yes']] },
+  cluster: { kicker: 'Interior', name: 'Digital instrument cluster', photo: 'interior12',
+    text: 'A 12.3-inch display behind the wheel with M-specific layouts: a sweeping rev counter, a shift light that turns red at the limiter, lap timer and g-meter. Click to see live data.',
+    made: 'Curved glass, high-contrast LCD', specs: [['Size', '12.3 in'], ['Modes', 'Road · Sport · Track'], ['Shift lights', 'Yes'], ['Lap timer', 'Yes']] },
+  display: { kicker: 'Interior', name: 'Control display & M Setup', photo: 'interior14',
+    text: 'The central touchscreen with iDrive controller. The M Setup menu lets you tune the car. Click to open the screen and try it.',
+    made: 'Curved glass, touch + iDrive controller + voice', specs: [['Controls', 'Touch · iDrive · voice'], ['M Setup', '7 settings'], ['Navigation', 'Yes'], ['Apple / Android', 'Wireless']] },
+  gear:    { kicker: 'Interior', name: 'Gear selector & Drivelogic', photo: 'interior14',
+    text: 'The M gear selector for the 8-speed M Steptronic. The Drivelogic switch sets how fast and how firmly the gearbox changes, in three stages.',
+    made: 'Leather, carbon fibre, aluminium', specs: [['Gears', '8'], ['Drivelogic', '3 stages'], ['Mode', 'D / S / manual'], ['Launch control', 'Yes']] },
+};
+Object.assign(INFO, CABIN_INFO);
+Object.entries(CABIN_INFO).forEach(([k, c]) => { PHOTOS[k] = c.photo; });
+const CABIN_SPOTS = [['mwheel', [0.37, 0.93, 0.4]], ['cluster', [0.37, 1.02, 0.63]], ['display', [0.03, 1.02, 0.58]], ['gear', [0.02, 0.74, 0.28]], ['seats', [-0.37, 1.05, -0.32]]];
+const cabinSpotsEl = $('#cabinSpots');
+const cabinSpotEls = CABIN_SPOTS.map(([k, at]) => {
+  const el = document.createElement('button');
+  el.className = 'spot';
+  el.innerHTML = `<i class="ring"></i><span>${INFO[k].name}</span>`;
+  el.addEventListener('click', e => {
+    e.stopPropagation();
+    if (k === 'display') openIdrive('setup');
+    else if (k === 'cluster') openIdrive('drive');
+    else setFocus(k);
+  });
+  cabinSpotsEl.appendChild(el);
+  return { el, at: V3(...at) };
+});
+function setInside(on) {
+  if (on === insideWanted) return;
+  insideWanted = on;
+  insideScroll = scrollY;
+  if (on) { setFocus(null); setExploded(false); setHood(false); }
+  else { closeIdrive(); if (sim.on) setDriving(false); }
+  $('#insideBtn').classList.toggle('on', on);
+  $('#insideText').textContent = on ? 'Step out' : 'Step inside';
+}
+$('#insideBtn').addEventListener('click', () => setInside(!insideWanted));
+function updateDoorAndCabin(dt) {
+  const door = PARTGROUPS.doorL;
+  const want = (insideWanted && insideAmt < 0.97) || (!insideWanted && insideAmt > 0.02) || (cfgKey === 'seat' && cfgAmt > 0.2);
+  doorOpen = SNAP ? (want ? 1 : 0) : clamp(doorOpen + (want ? 1 : -1) * dt / 0.8, 0, 1);
+  if (insideWanted) { if (doorOpen > 0.85 || insideAmt > 0.55) insideAmt = SNAP ? 1 : Math.min(1, insideAmt + dt / 2.2); }
+  else if (insideAmt > 0 && (insideAmt < 0.5 || doorOpen > 0.85)) insideAmt = SNAP ? 0 : Math.max(0, insideAmt - dt / 2.0);
+  if (door) { // swing about the hinge at the door's front edge
+    if (!door.hinge) door.hinge = V3(door.box.max.x - 0.04, door.pivot.y, door.box.max.z - 0.03).sub(door.pivot);
+    const a = -1.1 * easeInOut(doorOpen), d = door.hinge;
+    door.inner.rotation.y = a;
+    door.inner.position.copy(d).sub(d.clone().applyAxisAngle(V3(0, 1, 0), a));
+  }
+  cabinLight.intensity = insideAmt * 1.6;
+  document.body.classList.toggle('inside', insideAmt > 0.95);
+  if (insideWanted && Math.abs(scrollY - insideScroll) > 160) setInside(false);
+}
+
+/* In-car screen */
+const idriveEl = $('#idrive');
+const SETUP = [
+  ['Engine', ['Efficient', 'Sport', 'Sport Plus'], 1],
+  ['Chassis', ['Comfort', 'Sport', 'Sport Plus'], 0],
+  ['Steering', ['Comfort', 'Sport'], 0],
+  ['Brakes', ['Comfort', 'Sport'], 0],
+  ['Gearshift (Drivelogic)', ['1', '2', '3'], 1],
+  ['DSC', ['On', 'M Dynamic', 'Off'], 0],
+  ['Exhaust sound', ['Comfort', 'Sport'], 1],
+];
+$('#setupGrid').innerHTML = SETUP.map(([name, opts, on], r) =>
+  `<div class="setup-row"><span>${name}</span><div class="seg" data-row="${r}">${opts.map((o, i) => `<button class="${i === on ? 'on' : ''}" data-i="${i}">${o}</button>`).join('')}</div></div>`).join('')
+  + '<div class="setup-row"><span>M Traction Control · <b id="tcVal">5</b></span><input type="range" min="1" max="10" value="5" id="tcRange"></div>';
+$('#setupGrid').addEventListener('click', e => {
+  const b = e.target.closest('.seg button');
+  if (!b) return;
+  const seg = b.parentElement, row = +seg.dataset.row, i = +b.dataset.i;
+  seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  if (row === 0) engineSound.plus = i === 2;
+  if (row === 6) setExhaust(i === 1);
+});
+$('#tcRange').addEventListener('input', e => { $('#tcVal').textContent = e.target.value; });
+$$('[data-save]').forEach(b => b.addEventListener('click', () => {
+  $('#setupToast').textContent = `Saved to ${b.dataset.save} · press ${b.dataset.save} on the steering wheel to recall it`;
+}));
+$$('.idrive nav button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+function showTab(tab) {
+  $$('.idrive nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  $$('.idrive section').forEach(s => { s.hidden = s.dataset.panel !== tab; });
+}
+function openIdrive(tab) {
+  showTab(tab);
+  $('#idriveClock').textContent = new Date().toTimeString().slice(0, 5);
+  idriveEl.hidden = false;
+}
+function closeIdrive() { idriveEl.hidden = true; }
+$('#idriveClose').addEventListener('click', closeIdrive);
+idriveEl.addEventListener('click', e => { if (e.target === idriveEl) closeIdrive(); });
+function updateIdrive() {
+  if (idriveEl.hidden) return;
+  const rpm = engineSound.rpm, running = engineSound.on && rpm > 500, moving = rpm > 1300;
+  $('#liveRpm').textContent = Math.round(rpm / 10) * 10;
+  $('#liveTach').style.transform = `scaleX(${clamp(rpm / 7200, 0, 1)})`;
+  $('#liveSpeed').textContent = sim.on ? Math.round(sim.v * 3.6) : moving ? Math.round((rpm - 900) / 6100 * 118) : 0;
+  $('#liveGear').textContent = !running ? 'P' : sim.on ? sim.gear : moving ? '2' : 'N';
+  $('#liveBoost').textContent = `${(clamp((rpm - 1500) / 3500, 0, 1) * 1.7 * engineSound.load).toFixed(1)} bar`;
+  $('#livePower').textContent = `${Math.round(510 * clamp(rpm / 6250, 0, 1) * (0.15 + 0.85 * engineSound.load))} PS`;
+}
+
+/* Engine buttons */
+function setExhaust(sport) {
+  engineSound.sport = sport;
+  $('#exhaustText').textContent = `Exhaust: ${sport ? 'Sport' : 'Comfort'}`;
+  $$('.seg[data-row="6"] button').forEach(b => b.classList.toggle('on', +b.dataset.i === (sport ? 1 : 0)));
+}
+$('#exhaustBtn').addEventListener('click', () => setExhaust(!engineSound.sport));
+$('#listenBtn').addEventListener('click', () => { if (!driveOn) setDrive(true); engineSound.listen(); });
+const revOn = () => { if (!engineSound.on) engineSound.start(); engineSound.rev = true; $('#revBtn').classList.add('on'); };
+const revOff = () => { engineSound.rev = false; $('#revBtn').classList.remove('on'); };
+$('#revBtn').addEventListener('pointerdown', e => { e.preventDefault(); revOn(); });
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => $('#revBtn').addEventListener(ev, revOff));
+addEventListener('keydown', e => { if (e.code === 'Space' && engineSound.on && !e.repeat && !e.target.closest('input, textarea')) { e.preventDefault(); revOn(); } });
+addEventListener('keyup', e => { if (e.code === 'Space') revOff(); });
+
+/* ============================================================
+   Test-drive booking form (front end only: it shows a confirmation;
+   connect it to email / a CRM before using it with real customers)
+   ============================================================ */
+const bookEl = $('#book'), bookForm = $('#bookForm');
+const pad = n => String(n).padStart(2, '0');
+const isoDay = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+function openBook() {
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const max = new Date(); max.setMonth(max.getMonth() + 3);
+  bookForm.date.min = isoDay(tomorrow); bookForm.date.max = isoDay(max);
+  $('#bookSpec').textContent = `Your spec: ${paint.name} · ${SEAT_COLORS[seatChoice].name} seats · ${CALIPER_COLORS[caliperChoice].name} calipers`;
+  bookForm.hidden = false; $('#bookDone').hidden = true;
+  bookEl.hidden = false;
+  setTimeout(() => bookForm.name.focus(), 50);
+}
+const closeBook = () => { bookEl.hidden = true; };
+$$('[data-book]').forEach(b => b.addEventListener('click', openBook));
+$('#bookClose').addEventListener('click', closeBook);
+$('#bookOk').addEventListener('click', closeBook);
+bookEl.addEventListener('click', e => { if (e.target === bookEl) closeBook(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !bookEl.hidden) closeBook(); });
+const MESSAGES = {
+  name: 'Please enter your full name.',
+  email: 'Please enter a valid email address.',
+  phone: 'Please enter a valid phone number.',
+  date: 'Please choose a date from tomorrow up to 3 months ahead.',
+};
+bookForm.addEventListener('submit', e => {
+  e.preventDefault();
+  let ok = true;
+  for (const input of bookForm.querySelectorAll('input')) {
+    const bad = !input.checkValidity() || (input.name === 'name' && input.value.trim().split(/\s+/).length < 2);
+    input.nextElementSibling.textContent = bad ? (input.name === 'name' && input.value.trim() ? 'Please enter your first and last name.' : MESSAGES[input.name]) : '';
+    if (bad && ok) { input.focus(); ok = false; }
+  }
+  if (!ok) return;
+  const when = new Date(bookForm.date.value + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  $('#bookDoneText').textContent = `Thanks, ${bookForm.name.value.trim().split(/\s+/)[0]}. We've received your request for ${when} and will confirm it at ${bookForm.email.value.trim()}.`;
+  bookForm.hidden = true; $('#bookDone').hidden = false;
+  bookForm.reset();
+});
+
+/* ============================================================
+   Drive mode: sit in the driver's seat, view locked forward, and drive
+   down a night highway. A simple longitudinal model with the real
+   8-speed ratios decides speed, rpm and when to shift.
+   ============================================================ */
+const GEARS = [5.0, 3.2, 2.143, 1.72, 1.314, 1.0, 0.822, 0.64]; // 8-speed M Steptronic (approx.)
+const FINAL = 3.15, TYRE_R = 0.34, MASS = 1725;
+const RPM_PER_MS = 60 * FINAL / (TAU * TYRE_R); // engine rpm per (m/s) per unit gear ratio
+const sim = { on: false, v: 0, gear: 1, shiftT: 0, gas: false, brake: false, a: 0, rpm: 900, odo: 0 };
+const torqueAt = rpm => (rpm < 2750 ? lerp(420, 650, clamp((rpm - 1200) / 1550, 0, 1)) : rpm < 5500 ? 650 : lerp(650, 560, (rpm - 5500) / 1700));
+function setDriving(on) {
+  sim.on = on;
+  if (on) {
+    if (!driveOn) setDrive(true);
+    closeIdrive(); setFocus(null);
+    sim.gear = 1;
+  } else { sim.gas = false; sim.brake = false; engineSound.ext = null; }
+  $('#hud').hidden = !on;
+  $('#hudControls').hidden = !on;
+  document.body.classList.toggle('driving', on);
+  world.visible = on;
+  floor.visible = contact.visible = !on;
+  beams.forEach(b => { b.intensity = on ? 260 : 0; });
+  for (const m of matCache.values()) if (/windows/.test(m.name)) m.opacity = on ? 0.18 : 0.55; // clear windscreen while driving
+  scene.background = on ? NIGHT : BG;
+  scene.fog.color.copy(on ? NIGHT : BG);
+  scene.fog.near = on ? 25 : 14; scene.fog.far = on ? 190 : 40;
+}
+$('#wheelBtn').addEventListener('click', () => setDriving(true));
+$('#exitDriveBtn').addEventListener('click', () => setDriving(false));
+const holdBtn = (el, key) => {
+  el.addEventListener('pointerdown', e => { e.preventDefault(); sim[key] = true; el.classList.add('on'); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, () => { sim[key] = false; el.classList.remove('on'); }));
+};
+holdBtn($('#gasBtn'), 'gas');
+holdBtn($('#brakeBtn'), 'brake');
+addEventListener('keydown', e => {
+  if (!sim.on || e.repeat) return;
+  if (e.code === 'KeyW' || e.code === 'ArrowUp') { sim.gas = true; $('#gasBtn').classList.add('on'); }
+  if (e.code === 'KeyS' || e.code === 'ArrowDown') { sim.brake = true; $('#brakeBtn').classList.add('on'); }
+  if (e.code === 'Escape') setDriving(false);
+});
+addEventListener('keyup', e => {
+  if (e.code === 'KeyW' || e.code === 'ArrowUp') { sim.gas = false; $('#gasBtn').classList.remove('on'); }
+  if (e.code === 'KeyS' || e.code === 'ArrowDown') { sim.brake = false; $('#brakeBtn').classList.remove('on'); }
+});
+const lightsEl = $('#hudLights');
+lightsEl.innerHTML = '<i></i>'.repeat(10);
+const leds = [...lightsEl.children];
+
+function updateSim(dt) {
+  const running = SNAP ? engineSound.on : engineSound.on && engineSound.ctx && engineSound.ctx.currentTime > engineSound.catchAt + 0.6;
+  const throttle = sim.on && running && (sim.gas || engineSound.rev) && sim.shiftT <= 0 ? 1 : 0;
+  const ratio = GEARS[sim.gear - 1];
+  let rpm = sim.v * RPM_PER_MS * ratio;
+  // pulling away: the clutch slips, holding the revs up
+  if (sim.gear === 1 && rpm < 2600) rpm = throttle ? lerp(2600, rpm, clamp(sim.v / 6, 0, 1)) : Math.max(rpm, 880);
+  rpm = Math.max(rpm, 880);
+  if (sim.shiftT > 0) sim.shiftT -= dt;
+  let a;
+  if (throttle) {
+    const force = torqueAt(rpm) * ratio * FINAL * 0.9 / TYRE_R;
+    a = Math.min(force / MASS, 9.5); // traction-limited in the low gears
+  } else a = -0.6 - (running ? 0.9 * (rpm / 7000) : 0); // rolling resistance + engine braking
+  if (sim.brake) a -= 11;
+  a -= 0.00042 * sim.v * sim.v; // aerodynamic drag
+  sim.a = damp(sim.a, a, 6, dt);
+  sim.v = clamp(sim.v + a * dt, 0, 80.5); // 290 km/h
+  sim.odo += sim.v * dt;
+  // automatic shifts: up at 6,900 rpm under throttle, down when the revs drop
+  if (throttle && rpm > 6900 && sim.gear < 8 && sim.shiftT <= 0) { sim.gear++; sim.shiftT = 0.14; engineSound.shift(true); flashLeds(); }
+  else if (sim.gear > 1 && rpm < (throttle ? 1500 : 2000) && sim.shiftT <= 0) { sim.gear--; sim.shiftT = 0.18; engineSound.shift(false); }
+  if (sim.v < 0.3 && !throttle) sim.gear = 1;
+  if (rpm > 7050) rpm = 6950 + Math.random() * 200; // limiter in top gear
+  sim.rpm = rpm;
+  if (sim.on) engineSound.ext = { rpm, load: throttle };
+  // HUD
+  if (!sim.on) return;
+  $('#hudSpeed').textContent = Math.round(sim.v * 3.6);
+  $('#hudGear').textContent = sim.v < 0.3 && !throttle ? 'N' : sim.gear;
+  $('#hudRpm').textContent = Math.round(rpm / 50) * 50;
+  $('#hudTach').style.transform = `scaleX(${clamp(rpm / 7200, 0, 1)})`;
+  if (!lightsEl.classList.contains('flash')) leds.forEach((l, i) => {
+    const on = rpm > 4600 + i * 240;
+    l.className = on ? (i < 5 ? 'g' : i < 8 ? 'y' : 'r') : '';
+  });
+}
+function flashLeds() { lightsEl.classList.add('flash'); setTimeout(() => lightsEl.classList.remove('flash'), 120); }
+
+/* The night highway: asphalt with lane markings, street lamps and reflector posts that stream past */
+const NIGHT = new THREE.Color('#060a12');
+const world = new THREE.Group();
+world.visible = false;
+scene.add(world);
+const ROAD_LEN = 520, ROAD_W = 9.6, ROAD_X = 1.8; // the car sits in the right-hand lane
+const asphalt = canvasTexture(256, 1024, (ctx, w, h) => {
+  ctx.fillStyle = '#17181b'; ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 9000; i++) { const g = 18 + Math.random() * 30; ctx.fillStyle = `rgb(${g},${g},${g + 3})`; ctx.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5); }
+  ctx.fillStyle = '#e8e8e8';
+  ctx.fillRect(7, 0, 5, h); ctx.fillRect(w - 12, 0, 5, h); // edge lines
+  ctx.fillRect(w / 2 - 3, 0, 6, 128); ctx.fillRect(w / 2 - 3, 512, 6, 128); // dashed lane divider
+});
+asphalt.wrapS = asphalt.wrapT = THREE.RepeatWrapping;
+asphalt.repeat.set(1, ROAD_LEN / 24);
+asphalt.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const roadMesh = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W, ROAD_LEN).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85, metalness: 0 }));
+roadMesh.position.set(ROAD_X, 0.004, ROAD_LEN / 2 - 60);
+world.add(roadMesh);
+const verge = new THREE.Mesh(new THREE.PlaneGeometry(400, ROAD_LEN).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#07090b', roughness: 1 }));
+verge.position.set(ROAD_X, 0.001, ROAD_LEN / 2 - 60);
+world.add(verge);
+const glowMap = canvasTexture(128, 128, (ctx, w) => {
+  const g = ctx.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.3, 'rgba(255,255,255,0.35)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, w);
+});
+const MOVERS = []; // things that stream past; z wraps around
+const LAMP_GAP = 38, LAMPS = 14;
+const lampMat = new THREE.MeshStandardMaterial({ color: '#3a3d42', metalness: 0.7, roughness: 0.5 });
+const lampHeadMat = new THREE.MeshStandardMaterial({ color: '#fff4e0', emissive: '#ffd9a0', emissiveIntensity: 6 });
+for (let i = 0; i < LAMPS; i++) {
+  const g = new THREE.Group();
+  g.position.set(ROAD_X + ROAD_W / 2 + 1.2, 0, i * LAMP_GAP - 40);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 8, 10), lampMat); pole.position.y = 4;
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.12, 0.14), lampMat); arm.position.set(-1.7, 7.9, 0);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.35), lampHeadMat); head.position.set(-3.2, 7.8, 0);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowMap, color: '#ffcf8a', transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }));
+  glow.position.set(-3.2, 7.6, 0); glow.scale.setScalar(6);
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(6, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: glowMap, color: '#b08850', transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending }));
+  pool.position.set(-3.2, 0.01, 0);
+  g.add(pole, arm, head, glow, pool);
+  world.add(g);
+  MOVERS.push({ o: g, span: LAMPS * LAMP_GAP, lamp: true });
+}
+const postGeo = new THREE.BoxGeometry(0.1, 0.9, 0.1), postMat = new THREE.MeshStandardMaterial({ color: '#d9d9d9', roughness: 0.6 });
+const reflMat = new THREE.MeshStandardMaterial({ color: '#ff9a2a', emissive: '#ff8a1a', emissiveIntensity: 2 });
+for (let i = 0; i < 44; i++) {
+  const side = i % 2 ? ROAD_X - ROAD_W / 2 - 0.6 : ROAD_X + ROAD_W / 2 + 0.6;
+  const g = new THREE.Group();
+  g.position.set(side, 0, Math.floor(i / 2) * 22 - 50);
+  const p = new THREE.Mesh(postGeo, postMat); p.position.y = 0.45;
+  const r = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.12, 0.02), reflMat); r.position.set(0, 0.75, -0.06);
+  g.add(p, r);
+  world.add(g);
+  MOVERS.push({ o: g, span: 22 * 22 });
+}
+// headlight beams lighting the road ahead (drive mode only)
+const beams = [0.62, -0.62].map(x => {
+  const s = new THREE.SpotLight(0xe8f1ff, 0, 90, 0.42, 0.55, 1.2);
+  s.position.set(x, 0.66, 2.15);
+  s.target.position.set(x * 0.6, 0, 30);
+  car.add(s, s.target);
+  return s;
+});
+// one light rides along with the nearest overhead lamp, so light sweeps through the cabin
+const passLight = new THREE.PointLight(0xffd6a0, 0, 16, 1.4);
+world.add(passLight);
+passLight.layers.enable(2);
+/* Live instrument cluster: a screen drawn every frame and laid over the cluster in the cockpit */
+const clusterCanvas = document.createElement('canvas');
+clusterCanvas.width = 1024; clusterCanvas.height = 400;
+const cctx = clusterCanvas.getContext('2d');
+const clusterTex = new THREE.CanvasTexture(clusterCanvas);
+clusterTex.colorSpace = THREE.SRGBColorSpace;
+const clusterScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.33, 0.129), new THREE.MeshBasicMaterial({ map: clusterTex, toneMapped: false }));
+clusterScreen.position.set(0.37, 0.925, 0.588);
+clusterScreen.rotation.set(-0.12, Math.PI, 0); // faces the driver, top leaning away
+car.add(clusterScreen);
+let clusterFrame = 0;
+function drawCluster() {
+  const c = cctx, W = 1024, H = 400;
+  const rpm = sim.on ? sim.rpm : engineSound.rpm, running = engineSound.on && rpm > 300;
+  const speed = sim.on ? Math.round(sim.v * 3.6) : 0;
+  const gear = !running ? 'P' : sim.on ? (sim.v < 0.3 && !sim.gas ? 'N' : String(sim.gear)) : 'N';
+  c.fillStyle = '#04060a'; c.fillRect(0, 0, W, H);
+  const bg = c.createRadialGradient(W / 2, H * 0.9, 20, W / 2, H * 0.9, W * 0.6);
+  bg.addColorStop(0, 'rgba(40,70,140,0.35)'); bg.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = bg; c.fillRect(0, 0, W, H);
+  // rev counter: a sweeping arc of segments, red from 7,000
+  const cx = W / 2, cy = H * 1.02, r = 330, a0 = Math.PI * 1.13, a1 = Math.PI * 1.87, N = 72;
+  for (let i = 0; i < N; i++) {
+    const f = i / N, val = f * 8000, a = lerp(a0, a1, f), lit = running && val <= rpm;
+    c.strokeStyle = val >= 7000 ? (lit ? '#ff2a3a' : '#4a1016') : lit ? `hsl(${210 - f * 30}, 90%, ${55 + f * 10}%)` : '#1a2230';
+    c.lineWidth = 16;
+    c.beginPath(); c.arc(cx, cy, r, a, a + (a1 - a0) / N * 0.7); c.stroke();
+  }
+  c.fillStyle = '#8f9bb0'; c.font = '600 22px Inter, sans-serif'; c.textAlign = 'center';
+  for (let k = 0; k <= 8; k++) { const a = lerp(a0, a1, k / 8); c.fillText(String(k), cx + Math.cos(a) * (r - 44), cy + Math.sin(a) * (r - 44) + 8); }
+  // gear, speed, rpm
+  c.fillStyle = '#ffffff'; c.font = '800 150px Archivo, Arial Black, sans-serif';
+  c.fillText(gear, cx, H * 0.72);
+  c.textAlign = 'left'; c.font = '800 84px Archivo, Arial Black, sans-serif'; c.fillText(String(speed), 60, H * 0.58);
+  c.font = '600 22px Inter, sans-serif'; c.fillStyle = '#8f9bb0'; c.fillText('km/h', 64, H * 0.66);
+  c.textAlign = 'right'; c.fillStyle = '#ffffff'; c.font = '800 64px Archivo, Arial Black, sans-serif';
+  c.fillText(String(Math.round(rpm / 50) * 50), W - 60, H * 0.58);
+  c.font = '600 22px Inter, sans-serif'; c.fillStyle = '#8f9bb0'; c.fillText('rpm', W - 62, H * 0.66);
+  // M shift lights across the top
+  for (let i = 0; i < 10; i++) {
+    const on = running && rpm > 4600 + i * 240;
+    c.fillStyle = on ? (i < 5 ? '#3ddc84' : i < 8 ? '#ffcc33' : '#ff3344') : '#141a24';
+    c.fillRect(W / 2 - 250 + i * 50, 22, 40, 12);
+  }
+  c.textAlign = 'center'; c.font = '600 20px Inter, sans-serif'; c.fillStyle = '#5fb4ff';
+  c.fillText(engineSound.plus ? 'SPORT PLUS' : 'SPORT', cx, H - 22);
+  clusterTex.needsUpdate = true;
+}
+function updateCluster() {
+  clusterScreen.visible = insideAmt > 0.3;
+  if (!clusterScreen.visible || (clusterFrame++ % 2)) return; // ~30 fps is plenty
+  drawCluster();
+}
+
+function updateWorld(dt) {
+  if (!world.visible) return;
+  const dz = sim.v * dt;
+  asphalt.offset.y -= dz / 24;
+  let nearest = null, best = 1e9;
+  for (const m of MOVERS) {
+    m.o.position.z -= dz;
+    if (m.o.position.z < -60) m.o.position.z += m.span;
+    if (m.lamp) { const d = Math.abs(m.o.position.z - 1); if (d < best) { best = d; nearest = m.o; } }
+  }
+  if (nearest) {
+    passLight.position.set(nearest.position.x - 3.2, 7.4, nearest.position.z);
+    passLight.intensity = 90 * clamp(1 - best / 22, 0, 1);
+  }
+}
+
+addEventListener('scroll', () => {
+  if (cfgKey && Math.abs(scrollY - cfgScroll) > 250) setCfgView(null);
+  if (focusKey && Math.abs(scrollY - focusScroll) > 120) setFocus(null);
+  const max = document.documentElement.scrollHeight - innerHeight;
+  $('#progress').style.transform = `scaleX(${max > 0 ? scrollY / max : 0})`;
+  $('#nav').classList.toggle('scrolled', scrollY > 40);
+}, { passive: true });
+const io = new IntersectionObserver(es => es.forEach(en => { if (en.isIntersecting) en.target.classList.add('in'); }), { threshold: 0.2 });
+$$('.reveal').forEach(el => io.observe(el));
+
+/* Render passes: scene -> hover glow -> dim -> inspected part on top */
+const dimScene = new THREE.Scene();
+const dimCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const dimQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ color: 0x020304, transparent: true, opacity: 0, depthTest: false, depthWrite: false }));
+dimScene.add(dimQuad);
+
+const anatomyEl = $('#anatomy');
+const anatomyProgress = () => { const len = anatomyEl.offsetHeight - innerHeight; return len > 0 ? clamp((scrollY - anatomyEl.offsetTop) / len, 0, 1) : 0; };
+const explodeFromScroll = p => (p < 0.08 || p >= 0.97 ? 0 : p < 0.4 ? (p - 0.08) / 0.32 : p < 0.64 ? 1 : 1 - (p - 0.64) / 0.33);
+
+/* ============================================================
+   Main loop
+   ============================================================ */
+const clock = new THREE.Clock();
+const tmp = V3(), tmp2 = V3();
+const camGoal = V3(), lookGoal = V3(), lookNow = V3(0, 0.6, 0);
+let yaw = 0.9, wheelAngle = 0, roadOffset = 0, hoverLean = 0, frameNo = 0, viewShift = 0, anatomyLabels = [];
+
+function frame() {
+  requestAnimationFrame(frame);
+  if (!ready) return;
+  const dt = SNAP ? 0.5 : Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+  const mobile = innerWidth <= 860;
+  frameNo++;
+  mouse.x = damp(mouse.x, mobile ? 0 : mouse.tx, 3.5, dt);
+  mouse.y = damp(mouse.y, mobile ? 0 : mouse.ty, 3.5, dt);
+  const v = viewAtScroll();
+
+  // explode
+  const ap = anatomyProgress();
+  btnExplode = btnTarget > btnExplode ? Math.min(1, btnExplode + dt * 0.45) : Math.max(0, btnExplode - dt * 0.45);
+  explode = damp(explode, Math.max(btnExplode, explodeFromScroll(ap)), 5, dt);
+  if (explode < 0.0005) explode = 0;
+  applyExplode(explode);
+  const ev = smooth(clamp(explode * 1.6, 0, 1));
+  document.body.classList.toggle('exploded', explode > 0.03);
+  $('#anatomyBar').style.transform = `scaleX(${ap})`;
+  const st = ap < 0.08 ? 'Scroll to take it apart' : ap < 0.4 ? 'Separating…' : ap < 0.64 ? 'Every major component' : ap < 0.97 ? 'Reassembling…' : 'Back together';
+  if ($('#anatomyState').textContent !== st) $('#anatomyState').textContent = st;
+
+  // bonnet: hinged at the windscreen, lifts from the front
+  const hoodTarget = (hoodWanted || v.hood > 0.5 || (focusKey && SPOTS[focusKey])) && explode < 0.02 ? 1 : 0;
+  hoodOpen = SNAP ? hoodTarget : damp(hoodOpen, hoodTarget, 2.2, dt);
+  if (PARTGROUPS.hood) PARTGROUPS.hood.inner.rotation.x = -easeInOut(clamp(hoodOpen, 0, 1)) * 0.95;
+  bayLight.intensity = hoodOpen * 3;
+  document.body.classList.toggle('bay', hoodOpen > 0.5 && v.hood < 0.5);
+
+  // hover (throttled)
+  updateSim(dt);
+  engineSound.update(dt);
+  updateWorld(dt);
+  updateDoorAndCabin(dt);
+  updateCluster();
+  if (started && !focusKey && explode < 0.05 && insideAmt < 0.01 && pointerInside && pointerType !== 'touch') {
+    if (frameNo % 2 === 0) {
+      const hit = pick(ndc);
+      setHover(hit ? hit.key : null);
+      if (hit) hoverPoint.copy(car.worldToLocal(hit.point.clone()));
+    }
+  } else if (hoverKey) setHover(null);
+  tipEl.style.transform = `translate3d(${mouse.px + 18}px, ${mouse.py + 18}px, 0)`;
+
+  // driving
+  // wheels follow the revs (rolling-road style): idle = standstill, limiter = flat out
+  const engineDrive = engineSound.on ? clamp((engineSound.rpm - 1100) / 5200, 0, 1) : 0;
+  drive = damp(drive, sim.on ? 0 : Math.max(engineDrive, v.drive) * (1 - ev), 3, dt);
+  wheelAngle += dt * (sim.on ? sim.v / TYRE_R : lerp(0, 24, drive));
+  for (let i = 0; i < 4; i++) for (const p of ['wheel', 'tyre', 'disc']) { const w = PARTGROUPS[p + i]; if (w) w.inner.rotation.x = wheelAngle; }
+  car.position.y = Math.sin(t * 2.1) * 0.006 * drive + Math.sin(t * 40) * 0.0008 * (driveOn ? 1 : 0);
+  car.rotation.x = Math.sin(t * 1.3) * 0.003 * drive;
+  roadOffset += dt * drive * 2.2;
+  roadTex.offset.y = roadOffset;
+  road.material.opacity = drive * 0.4;
+  streaks.lines.material.opacity = drive * 0.55;
+  for (let i = 0; i < streaks.data.length; i++) {
+    const s = streaks.data[i];
+    s.z -= dt * drive * 40;
+    if (s.z < -15) s.z += 30;
+    streaks.pos.set([s.x, s.y, s.z, s.x, s.y, s.z + s.len], i * 6);
+  }
+  streaks.lines.geometry.attributes.position.needsUpdate = true;
+  // engine idles when started: the whole engine block trembles
+  const idle = engineSound.on && engineSound.rpm > 400 ? 1 + engineSound.load * 1.5 : 0;
+  ENGINE_BITS.forEach(b => { b.inner.position.y = Math.sin(t * 55 + b.pivot.x * 3) * 0.0012 * idle; });
+  $('#rpmVal').textContent = Math.round(engineSound.rpm / 10) * 10;
+  $('#rpmBar').style.transform = `scaleX(${clamp(engineSound.rpm / 7200, 0, 1)})`;
+  updateIdrive();
+
+  // paint cross-fade
+  const pk = 1 - Math.exp(-4 * dt);
+  matPaint.color.lerp(paintTarget.color, pk);
+  matPaint.metalness = lerp(matPaint.metalness, paintTarget.metal, pk);
+  matPaint.roughness = lerp(matPaint.roughness, paintTarget.rough, pk);
+  if (matLivery && !liveryOn) { matLivery.color.copy(matPaint.color); matLivery.metalness = matPaint.metalness; matLivery.roughness = matPaint.roughness; }
+
+  // turntable
+  cfgAmt = damp(cfgAmt, cfgKey && !focusKey && insideAmt < 0.01 && explode < 0.02 ? 1 : 0, 2.4, dt);
+  if (!focusKey && !cfgKey && v.spin > 0.5 && ev < 0.01 && hoodOpen < 0.05 && !insideWanted && insideAmt < 0.01) yaw += dt * 0.15;
+  else yaw = damp(yaw, nearestAngle(0, yaw), 2.2, dt);
+  carYaw.rotation.y = yaw;
+  sweep.position.set(Math.sin(t * 0.4) * 4, 5.5, Math.cos(t * 0.4) * 2);
+  sweep.target.position.set(Math.sin(t * 0.4) * 1.5, 0.4, 0);
+
+  // camera
+  car.updateMatrixWorld(true);
+  hoverLean = damp(hoverLean, hoverKey && !focusKey ? 1 : 0, 2.5, dt);
+  const bay = hoodWanted && v.hood < 0.5 ? smooth(clamp(hoodOpen, 0, 1)) : 0; // clicked the bonnet: swing to the engine view
+  let az = lerp(v.az, BAY_VIEW.az, bay) + mouse.x * 0.14 + ev * (0.05 + Math.sin(t * 0.15) * 0.25);
+  let el = lerp(v.el, BAY_VIEW.el, bay) + mouse.y * 0.06 + ev * 0.3 * (1 - v.el);
+  el = clamp(el, 0.02, 1.25);
+  let dist = lerp(lerp(v.dist, BAY_VIEW.dist, bay), Math.max(v.dist, 15.5), ev) * (mobile ? 1.35 : 1) * lerp(1, 0.9, hoverLean);
+  const target = tmp.copy(v.t).lerp(V3(...BAY_VIEW.t), bay).lerp(V3(0, 1.3, 0), ev);
+  if (cfgKey && cfgAmt > 0.001) { // configurator close-up
+    const cv = CFG_VIEWS[cfgKey], s = smooth(cfgAmt);
+    az = lerp(az, cv.az, s); el = lerp(el, cv.el, s); dist = lerp(dist, cv.dist, s);
+    target.lerp(V3(...cv.t), s);
+  }
+  target.y += v.lift;
+  if (hoverLean > 0.001) target.lerp(car.localToWorld(hoverPoint.clone()), 0.2 * hoverLean);
+  camGoal.set(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)).multiplyScalar(dist).add(target);
+  lookGoal.copy(target);
+  // stepping inside: outside view -> beside the open door -> driver's eye point, then free look
+  if (insideAmt > 0.001) {
+    const E = car.localToWorld(EYE.clone()), W = car.localToWorld(DOORWAY.clone()), C = car.localToWorld(CABIN_LOOK.clone());
+    // driving: view locked straight ahead; the head tips back under acceleration and shakes with speed
+    const shake = sim.on ? (Math.random() - 0.5) * 0.0012 * clamp(sim.v / 40, 0, 1) : 0;
+    const yl = sim.on ? shake : -mouse.x * 1.35;
+    const pl = sim.on ? -0.07 + clamp(sim.a, -12, 10) * 0.004 + shake : mouse.y * 0.55 - 0.1;
+    if (sim.on) E.y += Math.sin(t * 13) * 0.0015 * clamp(sim.v / 30, 0, 1);
+    const look = E.clone().add(V3(Math.sin(yl) * Math.cos(pl), Math.sin(pl), Math.cos(yl) * Math.cos(pl)).applyQuaternion(carYaw.quaternion));
+    if (insideAmt < 0.5) { const s = smooth(insideAmt / 0.5); camGoal.lerp(W, s); lookGoal.lerp(C, s); }
+    else { const s = smooth((insideAmt - 0.5) / 0.5); camGoal.copy(W).lerp(E, s); lookGoal.copy(C).lerp(look, s); }
+  }
+  const fov = lerp(30, 62, smooth(clamp((insideAmt - 0.4) / 0.6, 0, 1)));
+  if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  const k = 1 - Math.exp(-(insideAmt > 0.98 ? 6 : 2.4) * dt);
+  camera.position.lerp(camGoal, SNAP ? 1 : k);
+  if (camera.position.y < 0.08) camera.position.y = 0.08;
+  lookNow.lerp(lookGoal, SNAP ? 1 : k);
+  camera.lookAt(lookNow);
+  const shiftGoal = mobile || focusKey || insideAmt > 0.01 ? 0 : lerp(v.shift, 0.14, bay) * (1 - ev);
+  viewShift = damp(viewShift, shiftGoal, 3, dt);
+  camera.setViewOffset(innerWidth, innerHeight, -viewShift * innerWidth, 0, innerWidth, innerHeight);
+
+  // passes
+  renderer.clear();
+  renderer.render(scene, camera);
+  if (hoverKey) {
+    camera.layers.set(2); scene.overrideMaterial = glowMat;
+    renderer.render(scene, camera);
+    scene.overrideMaterial = null; camera.layers.set(0);
+  }
+  // showcase: dim the car, then draw the lifted-out part on top, centre stage
+  const se = updateShow(dt, mobile);
+  if (se > 0.001) {
+    dimQuad.material.opacity = se * 0.86;
+    renderer.render(dimScene, dimCam);
+    renderer.clearDepth();
+    renderer.render(showScene, camera);
+  }
+
+  // engine hotspots (only with the bonnet up)
+  const spotsOn = hoodOpen > 0.85 && !focusKey && explode < 0.02;
+  spotsEl.classList.toggle('labels', spotsOn && (v.hood > 0.5 || SNAP));
+  for (const s of spotEls) {
+    car.localToWorld(tmp.copy(s.at)).project(camera);
+    s.el.style.transform = `translate3d(${(tmp.x + 1) / 2 * innerWidth}px, ${(1 - tmp.y) / 2 * innerHeight}px, 0)`;
+    s.el.classList.toggle('on', spotsOn && tmp.z < 1);
+    s.el.style.pointerEvents = spotsOn ? 'auto' : 'none';
+  }
+
+  // cabin hotspots (only once you're sitting inside)
+  const cabinOn = insideAmt > 0.97 && !focusKey && idriveEl.hidden;
+  for (const s of cabinSpotEls) {
+    car.localToWorld(tmp.copy(s.at)).project(camera);
+    s.el.style.transform = `translate3d(${(tmp.x + 1) / 2 * innerWidth}px, ${(1 - tmp.y) / 2 * innerHeight}px, 0)`;
+    const vis = cabinOn && tmp.z < 1 && Math.abs(tmp.x) < 1.05 && Math.abs(tmp.y) < 1.05;
+    s.el.classList.toggle('on', vis);
+    s.el.style.pointerEvents = vis ? 'auto' : 'none';
+  }
+  cabinSpotsEl.classList.toggle('labels', cabinOn);
+
+  // exploded-view labels
+  const labelsIn = clamp((explode - 0.6) / 0.3, 0, 1);
+  $('#anatomyLabels').style.opacity = labelsIn;
+  if (labelsIn > 0) for (const l of anatomyLabels) {
+    l.anchor.getWorldPosition(tmp).project(camera);
+    l.el.classList.toggle('left', tmp.x < -0.05); // label points away from the middle of the screen
+    l.el.style.transform = `translate3d(${(tmp.x + 1) / 2 * innerWidth}px, ${(1 - tmp.y) / 2 * innerHeight}px, 0)`;
+  }
+}
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  measure();
+});
+addEventListener('load', measure);
+
+/* ============================================================
+   Load the car
+   ============================================================ */
+const status = s => { $('#loadStatus').textContent = s; };
+const bar = f => { $('#loadBar').style.transform = `scaleX(${f})`; };
+const nextFrame = () => new Promise(r => setTimeout(r, 30));
+async function init() {
+  bar(0.15); status('Unpacking the car');
+  await nextFrame();
+  const bin = Uint8Array.from(atob(window.BMW_M4_GLB), c => c.charCodeAt(0));
+  const loader = new GLTFLoader();
+  loader.setMeshoptDecoder(MeshoptDecoder);
+  const gltf = await new Promise((res, rej) => loader.parse(bin.buffer, '', res, rej));
+  bar(0.55); status('Assembling 93 parts');
+  await nextFrame();
+  buildParts(gltf.scene);
+  setupExplode();
+  prepareConfigMaterials();
+  applySeat(params.get('seats') in SEAT_COLORS ? params.get('seats') : 'orange');
+  applyCaliper(params.get('calipers') in CALIPER_COLORS ? params.get('calipers') : 'gold');
+  // engine-bay hotspots sit on top of their real components
+  Object.entries(SPOTS).forEach(([k, s], i) => {
+    const eng = Object.keys(ENG_PART).find(e => ENG_PART[e] === k), pg = PARTGROUPS['eng:' + eng];
+    if (!pg) return;
+    const c = pg.box.getCenter(V3());
+    spotEls[i].at.set(c.x, pg.box.max.y + 0.03, c.z);
+  });
+  bar(0.85); status('Setting up the studio');
+  await nextFrame();
+  // exploded-view labels anchored to their parts
+  anatomyLabels = ANATOMY.filter(a => PARTGROUPS[a[2]] || a[2] === 'engine').map(([name, detail, key, off, side]) => {
+    const anchor = new THREE.Object3D();
+    if (key === 'engine') { const b = ENGINE_BITS.reduce((best, x) => (x.meshes.length > best.meshes.length ? x : best), ENGINE_BITS[0]); b.outer.add(anchor); }
+    else PARTGROUPS[key].outer.add(anchor);
+    anchor.position.set(...off);
+    const el = document.createElement('div');
+    el.className = `alabel ${side === 'l' ? 'left' : ''}`;
+    el.innerHTML = `<span class="al-dot"></span><span class="al-line"></span><span class="al-text"><b>${name}</b><i>${detail}</i></span>`;
+    $('#anatomyLabels').appendChild(el);
+    return { anchor, el };
+  });
+  applyPaint(PAINTS[params.get('paint')] ? params.get('paint') : 'white');
+  if (params.has('nolivery')) $('#liveryBtn').click();
+  renderer.compile(scene, camera);
+  ready = true;
+  bar(1); status('Ready');
+  await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]);
+  $('#loader').classList.add('done');
+  $('.hero-copy').classList.add('in');
+  setTimeout(() => { started = true; }, 500);
+  // shareable links: ?paint=green&hood&explode&drive&part=engine&spot=turbo
+  if (params.has('hood')) setHood(true);
+  if (params.has('explode')) setExploded(true);
+  if (params.has('drive')) setDrive(true);
+  if (params.has('book')) openBook();
+  if (CFG_VIEWS[params.get('cfg')]) setCfgView(params.get('cfg'));
+  if (params.has('inside') || params.has('driving')) setInside(true);
+  if (params.has('driving')) setTimeout(() => { setDriving(true); if (params.has('gas')) sim.gas = true; }, 200);
+  if (params.has('screen')) openIdrive(params.get('screen') || 'setup');
+  const want = params.get('part') || params.get('spot');
+  if (INFO[want]) setTimeout(() => setFocus(want), 300);
+}
+init().catch(err => { status('Could not load the car: ' + err.message); console.error(err); });
+frame();
+</script>
+</body>
+</html>

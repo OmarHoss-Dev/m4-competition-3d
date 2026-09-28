@@ -1,0 +1,5 @@
+# large working files, kept on disk but not published
+source-assets/
+.netlify/
+node_modules/
+car-website-skill/
