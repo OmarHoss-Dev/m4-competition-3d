@@ -239,7 +239,7 @@
   .plabel.below { padding: 8px 0 0; border-bottom: 0; border-top: 1px solid var(--accent); }
   .plabel i { font-style: normal; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
   .show-hint { position: fixed; left: 32%; bottom: 40px; transform: translateX(-50%); font-size: 10px; letter-spacing: .26em; text-transform: uppercase; color: var(--muted); padding: 8px 14px; background: rgba(5,6,7,.5); opacity: 0; }
-  body.inspecting #scene { cursor: grab; }
+  body.inspecting #scene, #scene { cursor: grab; }
   body.grabbing, body.grabbing #scene { cursor: grabbing; }
   #hudControls { position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 9; display: flex; gap: 10px; }
   #hudControls[hidden] { display: none; }
@@ -449,6 +449,7 @@
       <button class="btn" id="hoodBtn"><svg viewBox="0 0 24 24"><path d="M3 15l9-6 9 6"/><path d="M5 19h14"/></svg><span id="hoodText">Open bonnet</span></button>
       <button class="btn ghost" id="explodeBtn"><svg viewBox="0 0 24 24"><path d="M12 3v5M12 16v5M3 12h5M16 12h5"/><circle cx="12" cy="12" r="2"/></svg><span id="explodeText">Take it apart</span></button>
       <button class="btn ghost" id="driveBtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12l4-3"/></svg><span id="driveText">Start engine</span></button>
+      <button class="btn ghost" id="lightsBtn"><svg viewBox="0 0 24 24"><path d="M9 7h4a5 5 0 0 1 0 10H9z"/><path d="M5 9h2M4 12h3M5 15h2"/></svg><span id="lightsText">Lights on</span></button>
       <button class="btn ghost" id="insideBtn"><svg viewBox="0 0 24 24"><path d="M4 18c0-5 3-9 8-9s8 4 8 9"/><circle cx="12" cy="5" r="2"/></svg><span id="insideText">Step inside</span></button>
     </div>
     <div class="engine-panel interactive" id="enginePanel" hidden>
@@ -1033,6 +1034,7 @@ document.documentElement.addEventListener('mouseleave', () => { pointerInside = 
 addEventListener('click', e => {
   if (!started || insideAmt > 0.01 || e.target.closest('a, button, .interactive, .spot')) return;
   if (showDragged) { showDragged = false; return; } // that was a drag to rotate, not a click
+  if (carDragged) { carDragged = false; return; }
   if (focusKey) { setFocus(null); return; }
   if (explode > 0.05) return;
   const hit = pick(new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -((e.clientY / innerHeight) * 2 - 1)));
@@ -1700,6 +1702,100 @@ $('#revBtn').addEventListener('pointerdown', e => { e.preventDefault(); revOn();
 addEventListener('keydown', e => { if (e.code === 'Space' && engineSound.on && !e.repeat && !e.target.closest('input, textarea')) { e.preventDefault(); revOn(); } });
 addEventListener('keyup', e => { if (e.code === 'Space') revOff(); });
 
+/* Drag the car around with the left mouse button */
+let carDrag = null, carDragged = false, userYaw = 0, userYawT = 0, lastCarDrag = -1e9;
+addEventListener('pointerdown', e => {
+  if (e.button !== 0 || show.items.length || insideAmt > 0.01 || explode > 0.05 || e.target.closest('a, button, input, .interactive, .spot, .inspector')) return;
+  carDrag = { x: e.clientX, moved: 0 };
+});
+addEventListener('pointermove', e => {
+  if (!carDrag) return;
+  const dx = e.clientX - carDrag.x;
+  carDrag.x = e.clientX;
+  carDrag.moved += Math.abs(dx);
+  if (carDrag.moved > 4) { document.body.classList.add('grabbing'); setHover(null); }
+  userYawT += dx * 0.009;
+  lastCarDrag = performance.now();
+});
+addEventListener('pointerup', () => {
+  if (!carDrag) return;
+  carDragged = carDrag.moved > 6;
+  carDrag = null;
+  document.body.classList.remove('grabbing');
+});
+
+/* ============================================================
+   Headlights: a switch in the dock. Lights up the LED units, adds a glow
+   at each lamp and throws two beams onto the floor / road ahead.
+   ============================================================ */
+let lightsOn = false;
+const headMats = [];
+const lampGlows = [];
+const makeLampGlows = () => [0.66, -0.66].map(x => {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowMap, color: '#dcecff', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+  sp.position.set(x, 0.68, 2.2);
+  sp.scale.setScalar(0.55);
+  return sp;
+});
+function prepareLights() {
+  lampGlows.push(...makeLampGlows());
+  // the headlight units get their own material copies, so the rear LEDs are not affected
+  groupsFor('headlights').forEach(pg => {
+    pg.meshes.forEach(m => {
+      if (!m.material.emissive) return;
+      m.material = m.material.clone();
+      headMats.push(m.material);
+    });
+    lampGlows.forEach(g => pg.outer.add(g));
+    lampGlows.forEach(g => g.position.sub(pg.pivot));
+  });
+}
+function updateLights() {
+  const on = lightsOn || sim.on;
+  beams.forEach(b => { b.intensity = on ? (sim.on ? 260 : 120) : 0; });
+  headMats.forEach(m => { m.emissiveIntensity = on ? 3.2 : 0.9; });
+  lampGlows.forEach(g => { g.material.opacity = on ? 0.9 : 0; });
+}
+function setLights(on) {
+  lightsOn = on;
+  $('#lightsBtn').classList.toggle('on', on);
+  $('#lightsText').textContent = on ? 'Lights off' : 'Lights on';
+  updateLights();
+}
+$('#lightsBtn').addEventListener('click', () => setLights(!lightsOn));
+
+/* ============================================================
+   Number plates (front + rear) with the owner's name
+   ============================================================ */
+const PLATE_TEXT = 'OMAR HOSSAM';
+const plateTex = canvasTexture(1040, 220, (c, w, h) => {
+  c.fillStyle = '#f4f4f0'; c.fillRect(0, 0, w, h);
+  c.strokeStyle = '#111'; c.lineWidth = 8; c.strokeRect(10, 10, w - 20, h - 20);
+  c.fillStyle = '#1b3d91'; c.fillRect(14, 14, 110, h - 28);          // side band
+  ['#5fb4ff', '#2b4ea2', '#e2262f'].forEach((col, i) => {               // M stripes on the band
+    c.save(); c.translate(40 + i * 22, 60); c.transform(1, 0, -0.35, 1, 0, 0);
+    c.fillStyle = col; c.fillRect(0, 0, 16, 70); c.restore();
+  });
+  c.fillStyle = '#ffffff'; c.font = '700 34px Inter, Arial, sans-serif'; c.textAlign = 'center';
+  c.fillText('M4', 69, 180);
+  c.fillStyle = '#111'; c.textBaseline = 'middle';
+  let size = 150;
+  do { c.font = `800 ${size}px Archivo, "Arial Black", sans-serif`; size -= 4; } while (c.measureText(PLATE_TEXT).width > w - 190);
+  c.fillText(PLATE_TEXT, (w + 124) / 2, h / 2 + 6);
+});
+function addPlates() {
+  const mat = new THREE.MeshStandardMaterial({ map: plateTex, roughness: 0.35, metalness: 0.1 });
+  const geo = new THREE.PlaneGeometry(0.52, 0.11);
+  [['front', [0, 0.305, 2.405], 0, -0.1], ['rear', [0, 0.36, -2.382], Math.PI, 0.05]].forEach(([key, at, ry, rx]) => {
+    const pg = PARTGROUPS[key];
+    const plate = new THREE.Mesh(geo, mat);
+    plate.position.set(...at).sub(pg ? pg.pivot : V3());
+    plate.rotation.set(rx, ry, 0, 'YXZ');
+    (pg ? pg.inner : car).add(plate);
+    if (pg) pg.meshes.push(plate);
+  });
+}
+
 /* ============================================================
    Test-drive booking form (front end only: it shows a confirmation;
    connect it to email / a CRM before using it with real customers)
@@ -1765,7 +1861,7 @@ function setDriving(on) {
   document.body.classList.toggle('driving', on);
   world.visible = on;
   floor.visible = contact.visible = !on;
-  beams.forEach(b => { b.intensity = on ? 260 : 0; });
+  updateLights();
   for (const m of matCache.values()) if (/windows/.test(m.name)) m.opacity = on ? 0.18 : 0.55; // clear windscreen while driving
   scene.background = on ? NIGHT : BG;
   scene.fog.color.copy(on ? NIGHT : BG);
@@ -2079,9 +2175,12 @@ function frame() {
 
   // turntable
   cfgAmt = damp(cfgAmt, cfgKey && !focusKey && insideAmt < 0.01 && explode < 0.02 ? 1 : 0, 2.4, dt);
-  if (!focusKey && !cfgKey && v.spin > 0.5 && ev < 0.01 && hoodOpen < 0.05 && !insideWanted && insideAmt < 0.01) yaw += dt * 0.15;
+  if (performance.now() - lastCarDrag > 3500 && !focusKey && !cfgKey && v.spin > 0.5 && ev < 0.01 && hoodOpen < 0.05 && !insideWanted && insideAmt < 0.01) yaw += dt * 0.15;
   else yaw = damp(yaw, nearestAngle(0, yaw), 2.2, dt);
-  carYaw.rotation.y = yaw;
+  // your drag adds to the turntable; outside the free-spin views it eases back to the planned camera angle
+  if (!carDrag && (v.spin < 0.5 || focusKey || insideAmt > 0.01 || explode > 0.05 || cfgKey)) userYawT = damp(userYawT, nearestAngle(0, userYawT), 1.2, dt);
+  userYaw = damp(userYaw, userYawT, 10, dt);
+  carYaw.rotation.y = yaw + userYaw;
   sweep.position.set(Math.sin(t * 0.4) * 4, 5.5, Math.cos(t * 0.4) * 2);
   sweep.target.position.set(Math.sin(t * 0.4) * 1.5, 0.4, 0);
 
@@ -2089,7 +2188,7 @@ function frame() {
   car.updateMatrixWorld(true);
   hoverLean = damp(hoverLean, hoverKey && !focusKey ? 1 : 0, 2.5, dt);
   const bay = hoodWanted && v.hood < 0.5 ? smooth(clamp(hoodOpen, 0, 1)) : 0; // clicked the bonnet: swing to the engine view
-  let az = lerp(v.az, BAY_VIEW.az, bay) + mouse.x * 0.14 + ev * (0.05 + Math.sin(t * 0.15) * 0.25);
+  let az = lerp(v.az, BAY_VIEW.az, bay) + (carDrag ? 0 : mouse.x * 0.14) + ev * (0.05 + Math.sin(t * 0.15) * 0.25);
   let el = lerp(v.el, BAY_VIEW.el, bay) + mouse.y * 0.06 + ev * 0.3 * (1 - v.el);
   el = clamp(el, 0.02, 1.25);
   let dist = lerp(lerp(v.dist, BAY_VIEW.dist, bay), Math.max(v.dist, 15.5), ev) * (mobile ? 1.35 : 1) * lerp(1, 0.9, hoverLean);
@@ -2200,6 +2299,8 @@ async function init() {
   buildParts(gltf.scene);
   setupExplode();
   prepareConfigMaterials();
+  prepareLights();
+  addPlates();
   applySeat(params.get('seats') in SEAT_COLORS ? params.get('seats') : 'orange');
   applyCaliper(params.get('calipers') in CALIPER_COLORS ? params.get('calipers') : 'gold');
   // engine-bay hotspots sit on top of their real components
@@ -2237,6 +2338,7 @@ async function init() {
   if (params.has('explode')) setExploded(true);
   if (params.has('drive')) setDrive(true);
   if (params.has('book')) openBook();
+  if (params.has('lights')) setLights(true);
   if (CFG_VIEWS[params.get('cfg')]) setCfgView(params.get('cfg'));
   if (params.has('inside') || params.has('driving')) setInside(true);
   if (params.has('driving')) setTimeout(() => { setDriving(true); if (params.has('gas')) sim.gas = true; }, 200);
