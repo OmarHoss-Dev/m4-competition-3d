@@ -1,34 +1,42 @@
-# M4 Competition: interactive 3D car experience
+# BMW 3D Showroom: interactive car experiences
 
-A single-page 3D car showcase built with [three.js](https://threejs.org/). This is a concept demo and is not affiliated with BMW AG. The figures on the page are indicative.
+This is a multi-car 3D showroom built with [three.js](https://threejs.org/). The start screen shows the dealer's lineup, and each car opens an interactive experience. It is a concept demo and is not affiliated with BMW AG. The figures shown are indicative.
 
-## What it does
+**Cars:** BMW M4 Competition and BMW X5 xDrive40i. You can add more; see "Add a car" below.
 
-- A real 3D car, pre-split into 70 parts, in a dark studio with a turntable, light sweep and 7 paints (with or without the M livery).
-- The bonnet swings open on its hinge. Hotspots mark the S58 engine, twin turbos, intake, cooling pack, strut brace and fluids.
-- Clicking a part lifts it out of the car. It flies to centre stage (drag to rotate) and an info card shows a real photo, what it does, what it is made of and its key figures.
-- The brake system is shown side by side: tyre, forged wheel, carbon-ceramic disc and caliper.
-- "Take it apart" (button, or scroll through Anatomy) explodes the car into its components with labels, then reassembles it.
-- "Step inside" opens the door and moves the camera to the driver's seat, with free look, a live instrument cluster, cabin hotspots and an in-car screen (M Setup, live data, vehicle status).
-- Drive mode takes the wheel on a night highway: throttle, brake, 8-speed shifts, a head-up display and shift lights.
-- The engine sound is synthesised live with Web Audio: cold start, revs, limiter, gear-change cracks, turbo flutter and overrun crackle.
-- The configurator covers paint, seat upholstery and caliper colour, and the camera flies to the part you are changing.
-- A full technical data section.
-- The test-drive booking form is front end only. Connect it to a form service before real use.
+## Features on each car
+- A real 3D model split into parts, shown in a dark studio with paints, a turntable and a light sweep.
+- The bonnet or tailgate opens on its hinge. On the M4, hotspots mark the S58 engine, turbos, intake, cooling, strut brace and fluids.
+- Click a part to lift it out of the car to centre stage. Drag to rotate it. Its info card has a real photo, what the part does, what it is made of, and figures.
+- The brake system is shown side by side: tyre, wheel, disc and caliper.
+- The car can be taken apart (button, or by scrolling) and put back together.
+- Step inside: the door opens, you can look around, and there is a live instrument cluster and a working in-car screen.
+- Drive on a night highway with gear shifts, a head-up display and a synthesised engine sound.
+- A configurator for paint, seat colour and caliper colour, where the camera flies to the part you are changing.
+- Full technical data.
+- A test-drive / sales-advisor request form. Requests are emailed through FormSubmit.
 
-## Run it
+## Modes
+- `index.html` shows the lineup, then the chosen car.
+- `index.html?car=x5` goes straight to one car.
+- `index.html?kiosk` is the showroom touchscreen mode. It has a fullscreen button and bigger buttons. After 60 s with no touches it resets and plays an attract loop (spin, take apart, reassemble), and after 3 minutes it returns to the lineup. The form becomes "Talk to a sales advisor".
 
-Open `index.html` in a browser. It works straight from disk, because the model is embedded in `models/bmw_m4.glb.js`. An internet connection is needed for three.js and the fonts (both loaded from a CDN).
+## Set it up for a dealer
+Edit `dealer.js` with the name, city, phone, address, and the email address that should receive leads. The first request triggers a one-time confirmation email from FormSubmit; click it to start receiving requests. Opened from disk (`file://`), the form only shows the confirmation screen and sends nothing.
 
-## Deploy
+## Add a car
+Create `cars/<id>/` containing:
+- `car.js`: texts, paints, parts, camera points, gearbox and sound
+- `model.glb.js`: the embedded split model
+- `images/`: photos with credits
+- `thumb.jpg`
 
-It is a static site with no build step. On Netlify, publish the repository root; `netlify.toml` is already set up.
+Then add the car to `cars/lineup.js`. The tools and a step-by-step checklist are in the `car-website` skill:
+- `split_parts.mjs` for Sketchfab-style models
+- `rca_to_parts.mjs` for BMW's official Ramses projects
 
 ## Credits
-
-- **3D model:** ["BMW M4 Competition M Package"](https://sketchfab.com/3d-models/bmw-m4-competition-m-package-5c0a2dafb1ad408d9fc9eeef9aee531b) by [SRT Performance](https://sketchfab.com/TheRealSRT), licensed [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). It was split into parts and compressed for this site.
-- **Photos:** from Wikimedia Commons. Each photo's author and licence are shown on its card, and full details are in `images/credits.json`:
-  Wikisympathisant (CC BY-SA 4.0), Tommi Nummelin (CC BY-SA 3.0), Liftarn (CC BY 3.0), Tokumeigakarinoaoshima (CC BY-SA 4.0), Julian Herzog (CC BY 4.0), Damian B Oh (CC BY-SA 4.0), LuvsMG481 (CC BY-SA 4.0), Duboyong (CC BY-SA 4.0), M3C30 (CC BY-SA 4.0).
-- **Libraries and fonts:** three.js (MIT); Archivo and Inter from Google Fonts (OFL).
-
-`source-assets/` (the original model, the uncompressed split and the earlier code-built version) is kept locally and is not published.
+- **M4 model:** ["BMW M4 Competition M Package"](https://sketchfab.com/3d-models/bmw-m4-competition-m-package-5c0a2dafb1ad408d9fc9eeef9aee531b) by [SRT Performance](https://sketchfab.com/TheRealSRT), [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/).
+- **X5 model:** ["BMW X5 (G05)"](https://github.com/bmwcarit/digital-car-3d) by BMW Car IT GmbH, [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). It was assembled from the Ramses Composer project and split into parts.
+- **Photos:** Wikimedia Commons. Each card shows its photographer and licence, and full details are in `cars/*/images/credits.json`.
+- **Libraries and fonts:** three.js (MIT); Archivo and Inter (OFL).
