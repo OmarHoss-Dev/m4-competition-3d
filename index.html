@@ -325,6 +325,39 @@
     .spot span { display: none; }
   }
   .short { display: none; }
+  .nav-actions { display: flex; gap: 10px; }
+  body:not(.mcar) .m-only, body:not(.has-livery) .livery-only, body:not(.kiosk) .kiosk-only { display: none !important; }
+  .h1-short { display: inline !important; font-size: 1em !important; letter-spacing: inherit !important; margin: 0 !important; color: inherit !important; }
+  .book-note { font-size: 11px; color: var(--muted); margin-top: 10px; text-align: center; }
+
+  /* lineup */
+  .lineup { position: fixed; inset: 0; z-index: 101; overflow-y: auto; padding: 96px var(--gutter) 40px; background: radial-gradient(120% 90% at 50% 0%, #121b28 0%, #050607 60%); }
+  .lineup[hidden] { display: none; }
+  .lineup-head { max-width: 620px; margin-bottom: 34px; }
+  .lineup-head h2 { margin: 12px 0 12px; }
+  .lineup-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 22px; }
+  .lcard { position: relative; text-align: left; border: 1px solid var(--faint); background: rgba(255,255,255,.03); overflow: hidden; transition: border-color .3s, transform .3s; }
+  .lcard:hover, .lcard.current { border-color: var(--accent); transform: translateY(-3px); }
+  .lcard img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #0b0d11; }
+  .lcard div { padding: 16px 18px 18px; }
+  .lcard b { display: block; font-family: var(--display); font-stretch: 112%; font-weight: 800; font-size: 22px; text-transform: uppercase; }
+  .lcard span { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+  .lcard em { position: absolute; top: 12px; right: 12px; font-style: normal; font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; padding: 5px 9px; background: var(--accent); color: #07080a; }
+  .lineup-foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 30px; font-size: 12px; color: var(--muted); }
+  body.lineup-open .dock, body.lineup-open .paints { visibility: hidden; }
+
+  /* kiosk */
+  body.kiosk .btn { min-height: 48px; }
+  body.kiosk .dock .btn { padding: 18px 28px; font-size: 12px; }
+  .attract { position: fixed; left: 50%; bottom: 14vh; transform: translateX(-50%); z-index: 34; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; animation: breathe 2.6s ease-in-out infinite; }
+  .attract[hidden] { display: none; }
+  .attract b { font-family: var(--display); font-stretch: 120%; font-weight: 800; font-size: clamp(26px, 3.4vw, 46px); text-transform: uppercase; letter-spacing: .08em; text-shadow: 0 4px 30px rgba(0,0,0,.8); }
+  .attract span { font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); }
+  @keyframes breathe { 50% { opacity: .55; } }
+  body.attracting .dock, body.attracting .paints, body.attracting .hero-copy, body.attracting .nav, body.attracting .engine-panel { opacity: 0 !important; pointer-events: none; }
+
+  /* thumbnails for the lineup (rendered by the page itself) */
+  body.thumb .nav, body.thumb .dock, body.thumb .paints, body.thumb .hero-copy, body.thumb main, body.thumb footer, body.thumb .progress { display: none !important; }
 
   /* ---------- phones: nothing may overlap ---------- */
   @media (max-width: 860px) {
@@ -332,6 +365,9 @@
     .nav .btn .long { display: none; }
     .nav .btn .short { display: inline; }
     .nav .btn.small { padding: 9px 14px; font-size: 10px; }
+    .nav-actions { gap: 6px; }
+    .lineup { padding: 76px 16px 24px; }
+    .lineup-grid { grid-template-columns: 1fr; }
     .logo { font-size: 15px; gap: 10px; }
     .logo small { display: none; }
 
@@ -421,7 +457,7 @@
 
 <div class="loader" id="loader">
   <div class="mstripes"><i></i><i></i><i></i></div>
-  <div class="loader-mark">M4 COMPETITION</div>
+  <div class="loader-mark" data-car-text="loader"></div>
   <div class="loader-bar"><span id="loadBar"></span></div>
   <div class="loader-status" id="loadStatus">Loading the car</div>
 </div>
@@ -429,14 +465,32 @@
 <div class="progress" id="progress"></div>
 
 <nav class="nav" id="nav">
-  <a href="#top" class="logo"><span class="mstripes"><i></i><i></i><i></i></span>M4 <small>COMPETITION</small></a>
+  <a href="#top" class="logo"><span class="mstripes m-only"><i></i><i></i><i></i></span><span data-car-text="short"></span> <small data-car-text="sub"></small></a>
   <div class="nav-links">
     <a href="#design">Design</a><a href="#engine">Engine</a><a href="#anatomy">Anatomy</a><a href="#wheels">Wheels</a><a href="#performance">Performance</a><a href="#configure">Configure</a>
   </div>
-  <button class="btn small ghost" data-book><span class="long">Book a test drive</span><span class="short">Book</span></button>
+  <div class="nav-actions">
+    <button class="btn small ghost" id="modelsBtn"><span class="long">All models</span><span class="short">Models</span></button>
+    <button class="btn small ghost kiosk-only" id="fullBtn"><span>Fullscreen</span></button>
+    <button class="btn small ghost" data-book><span class="long" data-book-label>Book a test drive</span><span class="short">Book</span></button>
+  </div>
 </nav>
 
-<canvas id="scene" aria-label="Interactive 3D model of the M4 Competition"></canvas>
+<canvas id="scene" aria-label="Interactive 3D model of the car"></canvas>
+
+<!-- the dealer's lineup (start screen) -->
+<div class="lineup interactive" id="lineup" hidden>
+  <div class="lineup-head">
+    <span class="kicker" data-dealer="name"></span>
+    <h2>Choose your <em>BMW.</em></h2>
+    <p class="body">Open the bonnet, lift out any part, step inside and drive it. Every model, in 3D.</p>
+  </div>
+  <div class="lineup-grid" id="lineupGrid"></div>
+  <div class="lineup-foot"><span data-dealer="contact"></span><button class="btn small ghost" id="lineupClose"><span>Back to the car</span></button></div>
+</div>
+
+<!-- showroom kiosk: attract loop after inactivity -->
+<div class="attract" id="attract" hidden><b>Touch to explore</b><span data-dealer="name"></span></div>
 <div class="anatomy-labels" id="anatomyLabels" aria-hidden="true"></div>
 <div class="spots" id="spots"></div>
 <div class="show-labels" id="showLabels" aria-hidden="true"></div>
@@ -449,15 +503,16 @@
   <div class="book-card">
     <button class="close" id="bookClose" aria-label="Close">✕</button>
     <form id="bookForm" novalidate>
-      <span class="kicker">M4 Competition</span>
-      <h3 id="bookTitle">Book a test drive</h3>
-      <p>Tell us when suits you and we'll confirm your drive by email.</p>
+      <span class="kicker" data-car-text="name"></span>
+      <h3 id="bookTitle" data-book-label>Book a test drive</h3>
+      <p id="bookIntro">Tell us when suits you and we'll confirm your drive by email.</p>
       <label class="field"><span>Full name</span><input name="name" autocomplete="name" required minlength="2"><small></small></label>
       <label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" required><small></small></label>
       <label class="field"><span>Phone number</span><input name="phone" type="tel" autocomplete="tel" required pattern="[+0-9 ()\-]{7,}"><small></small></label>
       <label class="field"><span>Preferred date</span><input name="date" type="date" required><small></small></label>
       <p class="book-spec" id="bookSpec"></p>
-      <button class="btn" type="submit"><span>Request test drive</span></button>
+      <button class="btn" type="submit" id="bookSubmit"><span>Request test drive</span></button>
+      <p class="book-note" id="bookNote"></p>
     </form>
     <div class="book-done" id="bookDone" hidden>
       <div class="tick">✓</div>
@@ -488,14 +543,14 @@
 <div class="idrive interactive" id="idrive" hidden>
   <div class="idrive-screen">
     <header>
-      <span class="mstripes"><i></i><i></i><i></i></span>
-      <nav><button data-tab="setup" class="on">M Setup</button><button data-tab="drive">Live data</button><button data-tab="car">Vehicle status</button></nav>
+      <span class="mstripes m-only"><i></i><i></i><i></i></span>
+      <nav><button data-tab="setup" class="on" data-car-text="setupName">M Setup</button><button data-tab="drive">Live data</button><button data-tab="car">Vehicle status</button></nav>
       <span class="idrive-clock" id="idriveClock"></span>
       <button class="close" id="idriveClose" aria-label="Close screen">✕</button>
     </header>
     <section data-panel="setup">
       <div class="setup-grid" id="setupGrid"></div>
-      <div class="setup-foot"><button class="mbtn" data-save="M1">Save as <b>M1</b></button><button class="mbtn" data-save="M2">Save as <b>M2</b></button><span id="setupToast"></span></div>
+      <div class="setup-foot m-only"><button class="mbtn" data-save="M1">Save as <b>M1</b></button><button class="mbtn" data-save="M2">Save as <b>M2</b></button><span id="setupToast"></span></div>
     </section>
     <section data-panel="drive" hidden>
       <div class="live">
@@ -524,7 +579,7 @@
   <div class="insp-options" id="inOptions" hidden><span class="label" id="inOptionsLabel"></span><div class="opt-row" id="inOptionsRow"></div><span class="opt-name" id="inOptionsName"></span></div>
   <div class="insp-made"><span class="label">Made from</span><p id="inMade"></p></div>
   <dl class="insp-specs" id="inSpecs"></dl>
-  <button class="btn small listen" id="listenBtn" hidden><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/></svg><span>Listen to the exhaust</span></button>
+  <button class="btn small listen" id="listenBtn" hidden><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/></svg><span data-car-text="listen">Listen to the exhaust</span></button>
   <div class="insp-nav"><button id="inPrev" aria-label="Previous part">←</button><span class="label" id="inCount"></span><button id="inNext" aria-label="Next part">→</button></div>
 </aside>
 
@@ -532,9 +587,9 @@
   <section class="hero" data-view>
     <div class="hero-copy reveal">
       <p class="eyebrow">Concept experience</p>
-      <h1>M4<span>Competition</span></h1>
-      <p class="lead">510 PS, carbon everywhere, and every part explained. Open the bonnet, click any part to lift it out of the car, or take the whole car apart.</p>
-      <div class="hero-stats"><div><b>510</b><span>PS</span></div><div><b>650</b><span>Nm</span></div><div><b>3.9</b><span>s 0–100</span></div><div><b>290</b><span>km/h</span></div></div>
+      <h1><span data-car-text="short" class="h1-short"></span><span data-car-text="sub"></span></h1>
+      <p class="lead" data-car-html="lead"></p>
+      <div class="hero-stats" id="heroStats"></div>
     </div>
     <div class="dock interactive">
       <button class="btn" id="hoodBtn"><svg viewBox="0 0 24 24"><path d="M3 15l9-6 9 6"/><path d="M5 19h14"/></svg><span id="hoodText">Open bonnet</span></button>
@@ -547,30 +602,22 @@
       <div class="rpm"><b id="rpmVal">0</b><span>rpm</span><i id="rpmBar"></i></div>
       <button class="btn small" id="revBtn"><span>Hold to rev</span></button>
       <button class="btn small ghost" id="exhaustBtn"><span id="exhaustText">Exhaust: Sport</span></button>
-      <small>Synthesised S58 sound · Space = rev</small>
+      <small data-car-text="engineNote"></small>
     </div>
     <div class="paints interactive">
-      <button class="livery on" id="liveryBtn"><i></i>M livery</button>
+      <button class="livery on livery-only" id="liveryBtn"><i></i>M livery</button>
       <div class="swatches" id="swatches"></div>
       <span class="paint-name" id="paintName"></span>
     </div>
   </section>
 
   <section class="section top" id="design" data-view>
-    <div class="copy reveal">
-      <p class="num">01</p><p class="kicker">Design</p>
-      <h2>Wide hips. <em>Carbon crown.</em></h2>
-      <p class="body">Flared arches, a vertical kidney grille, a carbon roof and a swan-neck rear wing. Move over the car to highlight any part; click it to read what it is and what it's made of.</p>
-      <div class="stats"><div class="stat"><b>CFRP</b><span>Roof &amp; wing</span></div><div class="stat"><b>4</b><span>Tailpipes</span></div><div class="stat"><b>19/20<small>in</small></b><span>Wheels</span></div></div>
+    <div class="copy reveal" data-car-html="design">
     </div>
   </section>
 
   <section class="section" id="engine" data-view>
-    <div class="copy reveal">
-      <p class="num">02</p><p class="kicker">Under the bonnet</p>
-      <h2>The bonnet opens. <em>Meet the S58.</em></h2>
-      <p class="body">3.0 litres, six cylinders in a row, two turbochargers. Click the glowing points to explore the engine, the cooling pack, the carbon strut brace and the air intakes.</p>
-      <div class="stats"><div class="stat"><b>510<small>PS</small></b><span>Output</span></div><div class="stat"><b>650<small>Nm</small></b><span>Torque</span></div><div class="stat"><b>7,200</b><span>RPM limit</span></div></div>
+    <div class="copy reveal" data-car-html="engine">
     </div>
   </section>
 
@@ -582,24 +629,12 @@
   </section>
 
   <section class="section" id="wheels" data-view>
-    <div class="copy reveal">
-      <p class="num">04</p><p class="kicker">Wheels &amp; brakes</p>
-      <h2>Gold calipers. <em>Forged grip.</em></h2>
-      <p class="body">Forged M wheels, 19-inch at the front and 20-inch at the rear. Behind them sit M Carbon ceramic brakes with gold calipers: lighter, fade-resistant, built for the track.</p>
-      <div class="stats"><div class="stat"><b>400<small>mm</small></b><span>Front discs</span></div><div class="stat"><b>6</b><span>Piston calipers</span></div><div class="stat"><b>285<small>/30</small></b><span>Rear tyres</span></div></div>
+    <div class="copy reveal" data-car-html="wheels">
     </div>
   </section>
 
   <section class="section right" id="performance" data-view>
-    <div class="copy reveal">
-      <p class="num">05</p><p class="kicker">Performance</p>
-      <h2>Numbers that <em>move you.</em></h2>
-      <div class="perf">
-        <div><b>3.9<small>s</small></b><span>0–100 km/h</span></div>
-        <div><b>290<small>km/h</small></b><span>With M Driver's Pack</span></div>
-        <div><b>8<small>speed</small></b><span>M Steptronic</span></div>
-        <div><b>RWD<small>/ xDrive</small></b><span>Drive</span></div>
-      </div>
+    <div class="copy reveal" data-car-html="performance">
     </div>
   </section>
 
@@ -607,32 +642,7 @@
     <div class="copy wide reveal">
       <p class="num">06</p><p class="kicker">Technical data</p>
       <h2>Every <em>number.</em></h2>
-      <div class="spec-groups">
-        <dl><dt class="spec-head">Engine</dt>
-          <div><dt>Type</dt><dd>S58 straight-six, twin-turbo</dd></div>
-          <div><dt>Displacement</dt><dd>2,993 cc</dd></div>
-          <div><dt>Bore × stroke</dt><dd>84.0 × 90.0 mm</dd></div>
-          <div><dt>Compression</dt><dd>9.3 : 1</dd></div>
-          <div><dt>Max power</dt><dd>510 PS (375 kW) @ 6,250 rpm</dd></div>
-          <div><dt>Max torque</dt><dd>650 Nm @ 2,750–5,500 rpm</dd></div>
-          <div><dt>Rev limit</dt><dd>7,200 rpm</dd></div>
-        </dl>
-        <dl><dt class="spec-head">Performance</dt>
-          <div><dt>0–100 km/h</dt><dd>3.9 s (M xDrive 3.5 s)</dd></div>
-          <div><dt>Top speed</dt><dd>250 km/h · 290 with M Driver's Pack</dd></div>
-          <div><dt>Power-to-weight</dt><dd>≈ 3.4 kg per PS</dd></div>
-          <div><dt>Gearbox</dt><dd>8-speed M Steptronic, Drivelogic</dd></div>
-          <div><dt>Drive</dt><dd>RWD, Active M Differential</dd></div>
-          <div><dt>Consumption</dt><dd>≈ 10.2 l/100 km (WLTP)</dd></div>
-        </dl>
-        <dl><dt class="spec-head">Chassis &amp; body</dt>
-          <div><dt>Length / width / height</dt><dd>4,794 / 1,887 / 1,393 mm</dd></div>
-          <div><dt>Wheelbase</dt><dd>2,857 mm</dd></div>
-          <div><dt>Kerb weight (EU)</dt><dd>≈ 1,725 kg</dd></div>
-          <div><dt>Tyres</dt><dd>275/35 R19 · 285/30 R20</dd></div>
-          <div><dt>Brakes</dt><dd>M Compound · M Carbon ceramic (opt.)</dd></div>
-          <div><dt>Fuel tank / boot</dt><dd>59 L / 440 L</dd></div>
-        </dl>
+      <div class="spec-groups" data-car-html="specs">
       </div>
     </div>
   </section>
@@ -643,7 +653,7 @@
       <h2>Spec <em>yours.</em></h2>
       <span class="label cfg-label">Paint</span>
       <div class="config-list interactive" id="configList"></div>
-      <span class="label cfg-label">M Carbon bucket seats</span>
+      <span class="label cfg-label" data-car-text="seatsLabel"></span>
       <div class="config-list interactive" id="seatList"></div>
       <span class="label cfg-label">Brake calipers</span>
       <div class="config-list interactive" id="caliperList"></div>
@@ -654,11 +664,23 @@
 
 <footer>
   <span>Concept demo website · Not affiliated with BMW AG · Figures are indicative</span>
-  <span>3D model: <a href="https://sketchfab.com/3d-models/bmw-m4-competition-m-package-5c0a2dafb1ad408d9fc9eeef9aee531b" target="_blank" rel="noopener">"BMW M4 Competition M Package"</a> by <a href="https://sketchfab.com/TheRealSRT" target="_blank" rel="noopener">SRT Performance</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></span>
+  <span data-car-html="credit"></span>
+  <span data-dealer="contact"></span>
 </footer>
 
-<!-- the car, embedded so the page also works when opened straight from disk -->
-<script src="models/bmw_m4.glb.js"></script>
+<!-- dealer branding, the lineup, then the chosen car's profile + embedded model (works straight from disk) -->
+<script src="dealer.js"></script>
+<script src="cars/lineup.js"></script>
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search), id = q.get('car');
+    var ids = (window.LINEUP || []).map(function (c) { return c.id; });
+    if (ids.indexOf(id) < 0) id = ids[0] || 'm4';
+    window.CAR_ID = id;
+    window.SHOW_LINEUP = !q.has('car') && !q.has('snap');
+    document.write('<script src="cars/' + id + '/car.js"><\/script><script src="cars/' + id + '/model.glb.js"><\/script>');
+  })();
+</script>
 <script type="importmap">
 {
   "imports": {
@@ -687,21 +709,16 @@ const nearestAngle = (target, current) => target + TAU * Math.round((current - t
 const easeInOut = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const params = new URLSearchParams(location.search);
 const SNAP = params.has('snap'); // settle instantly (automated screenshots)
+const CAR = window.CAR;
+const DEALER = window.DEALER || {};
+const LINEUP = window.LINEUP || [];
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 
 /* ============================================================
    Paints (body colour) — the M livery decals sit on top
    ============================================================ */
-const PAINTS = {
-  white:  { name: 'Alpine White',      color: '#e9ebec', metal: 0.0,  rough: 0.22, accent: '#5fb4ff', rgb: '95, 180, 255' },
-  green:  { name: 'Isle of Man Green', color: '#0f5a47', metal: 0.65, rough: 0.28, accent: '#46d6a9', rgb: '70, 214, 169' },
-  yellow: { name: 'São Paulo Yellow',  color: '#e7bf16', metal: 0.05, rough: 0.2,  accent: '#f4cf2e', rgb: '244, 207, 46' },
-  blue:   { name: 'Portimão Blue',     color: '#1a4ca2', metal: 0.6,  rough: 0.28, accent: '#5ea9ff', rgb: '94, 169, 255' },
-  red:    { name: 'Toronto Red',       color: '#8a0e1d', metal: 0.6,  rough: 0.28, accent: '#ff4d5e', rgb: '255, 77, 94' },
-  grey:   { name: 'Brooklyn Grey',     color: '#80878c', metal: 0.35, rough: 0.25, accent: '#b3c4d2', rgb: '179, 196, 210' },
-  black:  { name: 'Black Sapphire',    color: '#0b0c10', metal: 0.7,  rough: 0.26, accent: '#5fb4ff', rgb: '95, 180, 255' },
-};
-let paint = PAINTS.white;
+const PAINTS = CAR.paints;
+let paint = PAINTS[CAR.defaults.paint] || Object.values(PAINTS)[0];
 
 /* ============================================================
    Renderer, studio, camera
@@ -814,8 +831,9 @@ let matLivery = null;
 function upgrade(orig) {
   if (matCache.has(orig)) return matCache.get(orig);
   const n = orig.name || '', map = orig.map || null, side = orig.side;
-  let m;
-  if (n.includes('zx1')) m = matPaint;
+  let m = CAR.materials(n, map, side, orig, THREE, { paint: matPaint, livery: x => (matLivery = x), texture: url => { const t = new THREE.TextureLoader().load(url); t.colorSpace = THREE.SRGBColorSpace; t.flipY = false; return t; } });
+  if (m) { if (m !== matPaint) m.name = n; matCache.set(orig, m); return m; }
+  if (false) m = matPaint;
   else if (n.includes('livery')) m = matLivery = new THREE.MeshPhysicalMaterial({ map, roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.04, side, polygonOffset: true, polygonOffsetFactor: -1 });
   else if (n.includes('windows')) m = new THREE.MeshPhysicalMaterial({ color: '#0b0e12', metalness: 0.1, roughness: 0.03, transparent: true, opacity: 0.55, clearcoat: 1, envMapIntensity: 1.6, side: THREE.DoubleSide, depthWrite: false });
   else if (n.includes('headlight5')) m = new THREE.MeshPhysicalMaterial({ color: '#ffffff', metalness: 0, roughness: 0.02, transparent: true, opacity: 0.18, clearcoat: 1, envMapIntensity: 2, depthWrite: false });
@@ -840,7 +858,7 @@ function upgrade(orig) {
    Parts: the model is merged by material, so we split every mesh into
    its connected pieces ("islands") and sort each piece into a part.
    ============================================================ */
-const WHEEL_CENTERS = [V3(0.85, 0.375, 1.53), V3(-0.85, 0.375, 1.53), V3(0.87, 0.375, -1.32), V3(-0.87, 0.375, -1.32)];
+const WHEEL_CENTERS = [];
 const PARTGROUPS = {}; // key -> { outer (moves when exploding), inner (hinge / spin), pivot, box, meshes }
 const ENGINE_BITS = []; // engine sections for the exploded view
 // split-model keys -> the part names used for hover / info / showcase
@@ -873,105 +891,20 @@ function buildParts(root) {
   }
   car.updateMatrixWorld(true);
   for (const pg of Object.values(PARTGROUPS)) pg.box = new THREE.Box3().setFromObject(pg.outer);
+  for (let i = 0; i < 4; i++) { const w = PARTGROUPS['tyre' + i] || PARTGROUPS['wheel' + i]; WHEEL_CENTERS[i] = w ? w.pivot.clone() : V3(i % 2 ? -0.85 : 0.85, 0.35, i < 2 ? 1.5 : -1.4); }
 }
 /* ============================================================
    Part information (hover, inspect, tour)
    ============================================================ */
-const PARTS = {
-  hood:       { kicker: 'Body', name: 'Bonnet', view: [0.3, 1, 0.8], hint: 'Click to open the bonnet',
-    text: 'The long, sculpted bonnet with its power dome and air vents. It hinges at the windscreen and lifts from the front to reveal the S58 engine.',
-    made: 'Aluminium outer skin over a lightweight inner frame', specs: [['Material', 'Aluminium'], ['Hinge', 'Rear'], ['Vents', 'Heat extraction'], ['Dome', 'Power dome']] },
-  engine:     { kicker: 'Powertrain', name: 'S58 straight-six', view: [0.3, 1, 0.6],
-    text: 'Six cylinders in a row, 3.0 litres, two mono-scroll turbochargers. It revs to 7,200 rpm and sits low and far back for balance.',
-    made: 'Closed-deck aluminium crankcase, forged crankshaft, cylinder-head core made with 3D printing', specs: [['Output', '510 PS'], ['Torque', '650 Nm'], ['Displacement', '2,993 cc'], ['Limiter', '7,200 rpm']] },
-  doors:      { kicker: 'Body', name: 'Frameless doors', view: [1, 0.4, 0.2],
-    text: 'Long coupé doors with frameless side glass that drops slightly when opened, for a clean, low roofline.',
-    made: 'Steel and aluminium structure, painted skin, leather and carbon door cards', specs: [['Windows', 'Frameless'], ['Count', '2'], ['Trim', 'Carbon'], ['Style', 'Coupé']] },
-  roof:       { kicker: 'Body', name: 'Carbon-fibre roof', view: [0.3, 1, 0.3],
-    text: 'Made from carbon fibre instead of steel, it saves weight at the highest point of the car and lowers the centre of gravity.',
-    made: 'Carbon-fibre-reinforced plastic (CFRP), exposed weave', specs: [['Material', 'CFRP'], ['Finish', 'Visible weave'], ['Benefit', 'Lower CoG'], ['Location', 'Roof']] },
-  wing:       { kicker: 'Aero', name: 'M Performance rear wing', view: [0.5, 0.6, -1],
-    text: 'A swan-neck carbon wing that presses the rear of the car onto the road at speed without adding drag at the front.',
-    made: 'Carbon-fibre-reinforced plastic, aluminium mounts', specs: [['Material', 'CFRP'], ['Mount', 'Swan-neck'], ['Job', 'Downforce'], ['Position', 'Boot lid']] },
-  trunk:      { kicker: 'Body', name: 'Boot lid', view: [0.3, 0.8, -1],
-    text: 'The boot lid carries the rear wing and hides a 440-litre luggage space.',
-    made: 'Aluminium inner and outer panels', specs: [['Volume', '440 L'], ['Material', 'Aluminium'], ['Carries', 'Rear wing'], ['Opening', 'Powered']] },
-  front:      { kicker: 'Design', name: 'Kidney grille & front apron', view: [0.35, 0.25, 1],
-    text: 'The vertical kidney grille feeds the radiators behind it. The apron has large intakes for the brakes and a carbon splitter for downforce.',
-    made: 'Painted polypropylene, gloss-black grille, carbon-fibre splitter', specs: [['Grille', 'Vertical kidney'], ['Splitter', 'CFRP'], ['Intakes', '3'], ['Role', 'Cooling + aero']] },
-  headlights: { kicker: 'Design', name: 'Adaptive LED headlights', view: [0.5, 0.2, 1],
-    text: 'Slim LED units with hexagonal daytime running lights. They swivel into corners and dip automatically for oncoming traffic.',
-    made: 'Polycarbonate lens, LED modules, aluminium reflectors', specs: [['Type', 'Adaptive LED'], ['DRL', 'Hexagonal'], ['Cornering', 'Yes'], ['High beam', 'Auto']] },
-  taillights: { kicker: 'Design', name: 'LED tail lights', view: [0.4, 0.3, -1],
-    text: 'Three-dimensional, smoked LED tail lights that wrap around the rear corners.',
-    made: 'Tinted polycarbonate lens, LED light guides', specs: [['Type', 'Full LED'], ['Lens', 'Smoked'], ['Signature', 'L-shape'], ['Brake', 'LED']] },
-  rear:       { kicker: 'Aero', name: 'Carbon diffuser & tailpipes', view: [0.4, 0.2, -1],
-    text: 'The rear diffuser smooths the airflow under the car and frames the four tailpipes of the M exhaust.',
-    made: 'Carbon-fibre diffuser, stainless-steel exhaust, black-chrome tips', specs: [['Diffuser', 'CFRP'], ['Tailpipes', '4'], ['Flaps', 'Electric'], ['Tips', 'Black chrome']] },
-  wheels:     { kicker: 'Chassis', name: 'Forged M wheels', view: [1, 0.3, 0.35],
-    text: 'Staggered forged wheels: 19-inch at the front for sharp steering, 20-inch at the rear to put the power down.',
-    made: 'Forged aluminium alloy, high-performance tyres', specs: [['Front', '275/35 R19'], ['Rear', '285/30 R20'], ['Wheel', 'Forged'], ['Spokes', 'Y-spoke']] },
-  brakes:     { kicker: 'Chassis', name: 'M Carbon ceramic brakes', view: [1, 0.35, 0.25],
-    text: 'Gold six-piston calipers bite on carbon-ceramic discs that are lighter than steel and resist fade lap after lap.',
-    made: 'Carbon-fibre-reinforced ceramic discs, aluminium calipers', specs: [['Front discs', '400 mm'], ['Front pistons', '6'], ['Caliper', 'Gold'], ['Weight', '−21 kg vs steel']] },
-  seats:      { kicker: 'Interior · M Carbon', name: 'M Carbon bucket seats', view: [0.5, 1, 0.3],
-    text: 'Race-derived bucket seats with a one-piece carbon-fibre shell, deep side bolsters and integrated headrests. Cut-outs in the backrest and under the thighs save weight, and an illuminated M4 badge sits in the backrest. They still offer electric adjustment and heating for everyday driving. Choose the upholstery below.',
-    made: 'Carbon-fibre-reinforced plastic (CFRP) shell, extended Merino leather with contrast stitching', specs: [['Weight saving', '≈ 9.6 kg (pair)'], ['Shell', 'One-piece CFRP'], ['Headrest', 'Integrated, illuminated badge'], ['Comfort', 'Electric · heated']] },
-  cabin:      { kicker: 'Interior', name: 'Cockpit', view: [0.4, 0.9, 0.6],
-    text: 'A curved driver display, the M steering wheel with red M1/M2 buttons, and carbon trim throughout.',
-    made: 'Merino leather, carbon fibre, aluminium', specs: [['Display', 'Curved'], ['Buttons', 'M1 / M2'], ['Trim', 'Carbon'], ['Seats', '4']] },
-  glass:      { kicker: 'Body', name: 'Glasshouse', view: [0.5, 0.7, 0.8],
-    text: 'Acoustic windscreen and rear window, framed by gloss-black pillars.',
-    made: 'Laminated acoustic glass', specs: [['Screen', 'Acoustic'], ['Tint', 'Solar'], ['Pillars', 'Gloss black'], ['Heating', 'Rear']] },
-  shell:      { kicker: 'Body', name: 'Body shell', view: [0.9, 0.5, 0.6],
-    text: 'Steel and aluminium shell with flared wheel arches, wider than the standard coupé at both axles.',
-    made: 'High-strength steel, aluminium, carbon side skirts', specs: [['Structure', 'Steel/aluminium'], ['Arches', 'Flared'], ['Skirts', 'Carbon'], ['Length', '4.79 m']] },
-};
+const PARTS = CAR.parts;
 // engine-bay hotspots (car space); each frames a region of the bay
-const SPOTS = {
-  s58:     { at: [0.02, 0.97, 1.52], r: [0.5, 0.25, 0.45], kicker: 'Powertrain', name: 'S58 engine', view: [0.25, 1, 0.55],
-    text: 'Under the M Power cover sits the 3.0-litre straight-six. Six individual coils fire the cylinders; the cover hides the intake plenum.',
-    made: 'Aluminium block and head, magnesium-reinforced cover', specs: [['Output', '510 PS'], ['Torque', '650 Nm'], ['Bore × stroke', '84 × 90 mm'], ['Compression', '9.3:1']] },
-  brace:   { at: [0.2, 0.93, 1.16], r: [0.75, 0.15, 0.2], kicker: 'Chassis', name: 'Strut brace', view: [0.2, 1, 0.9],
-    text: 'Bolts the suspension towers to the bulkhead so the front end stays stiff and precise under hard cornering.',
-    made: 'Aluminium and carbon fibre', specs: [['Mounts', '3-point'], ['Job', 'Stiffness'], ['Front axle', 'Double-joint'], ['Weight', 'Light']] },
-  cooling: { at: [0.0, 0.8, 2.05], r: [0.6, 0.2, 0.25], kicker: 'Powertrain', name: 'Cooling pack', view: [0.2, 1, 1],
-    text: 'A main radiator plus auxiliary coolers behind the kidneys keep the engine, oil and charge air cool, even on a race track.',
-    made: 'Aluminium cores, glass-fibre-reinforced tanks', specs: [['Radiators', '3'], ['Oil cooler', 'Yes'], ['Fan', 'Electric'], ['Fed by', 'Kidneys']] },
-  intake:  { at: [-0.5, 0.82, 1.78], r: [0.35, 0.2, 0.4], kicker: 'Powertrain', name: 'Air intake & charge pipes', view: [-0.5, 1, 0.9],
-    text: 'Fresh air is drawn in behind the grille, compressed by the turbos, cooled and fed to the six cylinders through these pipes.',
-    made: 'Glass-fibre composite, silicone hoses, aluminium clamps', specs: [['Filters', '2'], ['Path', 'Grille → turbo'], ['Charge cooling', 'Indirect'], ['Boost', '≈1.7 bar']] },
-  turbo:   { at: [0.38, 0.8, 1.45], r: [0.3, 0.25, 0.4], kicker: 'Powertrain', name: 'Twin turbochargers', view: [0.9, 1, 0.4],
-    text: 'Two mono-scroll turbos on the exhaust side, each fed by three cylinders. Exhaust gas spins the turbine, which forces extra air into the engine.',
-    made: 'Heat-resistant cast-steel housings, nickel-alloy turbines', specs: [['Units', '2'], ['Type', 'Mono-scroll'], ['Wastegate', 'Electric'], ['Max rpm', '≈200,000']] },
-  fluids:  { at: [-0.62, 0.88, 1.32], r: [0.25, 0.15, 0.3], kicker: 'Service', name: 'Fluid reservoirs', view: [-0.6, 1, 0.5],
-    text: 'Coolant and washer reservoirs with yellow caps, easy to reach for servicing.',
-    made: 'Polypropylene tanks', specs: [['Coolant', 'Closed loop'], ['Caps', 'Colour-coded'], ['Access', 'Tool-free'], ['Checks', 'Sensor']] },
-};
+const SPOTS = CAR.spots || {};
 const INFO = { ...PARTS, ...SPOTS };
-const TOUR = ['s58', 'turbo', 'intake', 'cooling', 'brace', 'fluids', 'hood', 'brakes', 'wheels', 'headlights', 'front', 'seats', 'cabin', 'doors', 'roof', 'wing', 'trunk', 'rear', 'taillights', 'glass', 'shell'];
+const TOUR = CAR.tour.filter(k => INFO[k]);
 
 // real photos (Wikimedia Commons, openly licensed) shown on each part's card
-const PHOTOS = { s58: 'engine', turbo: 'turbo', intake: 'engine2', cooling: 'front', brace: 'strut', fluids: 'engine3', hood: 'engine3',
-  wheels: 'wheel', brakes: 'ceramic', seats: 'interior5', cabin: 'interior14', front: 'front', headlights: 'front', taillights: 'taillight',
-  rear: 'rear', trunk: 'rear', wing: 'wing', doors: 'side', roof: 'side', glass: 'interior12', shell: 'side' };
-const CREDITS = {
-  engine: ['Wikisympathisant', 'CC BY-SA 4.0', 'File%3A2023-04-08_BMW_S58_straight-6-engine.jpg'],
-  engine2: ['Wikisympathisant', 'CC BY-SA 4.0', 'File%3A2023-04-08_BMW_S58_straight-6-engine_2nd-view.jpg'],
-  engine3: ['Wikisympathisant', 'CC BY-SA 4.0', 'File%3A2023-04-08_BMW_S58_straight-6-engine_3rd_view.jpg'],
-  turbo: ['Tommi Nummelin', 'CC BY-SA 3.0', 'File%3ASectioned_Garrett_AiResearch_turbocharger.JPG'],
-  strut: ['Liftarn', 'CC BY 3.0', 'File%3A96strutbar.jpg'],
-  wheel: ['Tokumeigakarinoaoshima', 'CC BY-SA 4.0', 'File%3AThe_tire_wheel_of_BMW_M4_Coup%C3%A9_Competition_M_xDrive_(G82)_with_M_Performance_Parts.jpg'],
-  ceramic: ['Julian Herzog', 'CC BY 4.0', 'File%3ACarbon_ceramic_brake_surface_detail_2014_01.jpg'],
-  interior5: ['Damian B Oh', 'CC BY-SA 4.0', 'File%3ABMW_G82_M4_Competition_Extended_Merino_Leather_Kyalami_Orange_Black_(5).jpg'],
-  interior12: ['Damian B Oh', 'CC BY-SA 4.0', 'File%3ABMW_G82_M4_Competition_Extended_Merino_Leather_Kyalami_Orange_Black_(12).jpg'],
-  interior14: ['Damian B Oh', 'CC BY-SA 4.0', 'File%3ABMW_G82_M4_Competition_Extended_Merino_Leather_Kyalami_Orange_Black_(14).jpg'],
-  front: ['LuvsMG481', 'CC BY-SA 4.0', 'File%3A2021_BMW_M4_Competition_G82_front.jpg'],
-  rear: ['Tokumeigakarinoaoshima', 'CC BY-SA 4.0', 'File%3ABMW_M4_Competition_Coup%C4%93_(G82)_rear.jpg'],
-  taillight: ['Tokumeigakarinoaoshima', 'CC BY-SA 4.0', 'File%3AThe_rear_light_of_BMW_M4_Coup%C3%A9_Competition_M_xDrive_(G82)_with_M_Performance_Parts.jpg'],
-  wing: ['Duboyong', 'CC BY-SA 4.0', 'File%3AG8M_WING_1.jpg'],
-  side: ['M3C30', 'CC BY-SA 4.0', 'File%3AG82-M4Competition-FrontSide_Black.jpg'],
-};
+const PHOTOS = { ...(CAR.photos || {}) };
+const CREDITS = CAR.credits || {};
 const partOf = o => { while (o && !o.userData.part) o = o.parent; return o ? o.userData.part : null; };
 
 /* ============================================================
@@ -998,6 +931,8 @@ function setupExplode() {
   add('trunk', [0, 1.35, -0.75], 0.07);
   add('doorL', [1.55, 0.3, 0.1], 0.12, [0, 0.25, 0]);
   add('doorR', [-1.55, 0.3, 0.1], 0.12, [0, -0.25, 0]);
+  add('doorBL', [1.45, 0.3, -0.25], 0.13, [0, 0.2, 0]);
+  add('doorBR', [-1.45, 0.3, -0.25], 0.13, [0, -0.2, 0]);
   add('front', [0, 0.05, 1.45], 0.14);
   add('headlights', [0, 0.45, 1.15], 0.16);
   add('rear', [0, 0.02, -1.45], 0.15);
@@ -1022,18 +957,7 @@ function setupExplode() {
 }
 
 /* Exploded-view labels: [name, detail, part key, offset from part centre, side] */
-const ANATOMY = [
-  ['Carbon roof', 'CFRP', 'roof', [0, 0.08, 0], 'r'],
-  ['Glasshouse', 'Acoustic glass', 'glass', [-0.55, 0.1, 0.4], 'l'],
-  ['Bonnet', 'Aluminium', 'hood', [0.2, 0.15, 0.7], 'r'],
-  ['Rear wing', 'CFRP swan-neck', 'wing', [-0.6, 0.05, 0], 'l'],
-  ['S58 engine', '3.0 L · 510 PS', 'eng:core', [0.3, 0.3, 0], 'r'],
-  ['Doors', 'Frameless', 'doorL', [0.1, 0.3, 0], 'r'],
-  ['Kidney grille', 'Front apron', 'front', [0.3, 0.1, 0.1], 'r'],
-  ['LED headlights', 'Adaptive', 'headlights', [-0.6, 0.05, 0], 'l'],
-  ['Seats', 'M Carbon buckets', 'seats', [0.4, 0.3, 0], 'r'],
-  ['Forged wheels', '19" / 20"', 'wheel0', [0.1, 0.35, 0], 'r'],
-];
+const ANATOMY = CAR.anatomy || [];
 
 /* ============================================================
    Scroll views (camera orbits the car). az = 0 looks at the nose,
@@ -1049,7 +973,9 @@ const VIEWS = [
   { az: -0.7, el: 0.1,  dist: 10.4, t: [0, 0.62, 0],    shift: -0.22, spin: 0, hood: 0, drive: 0 },  // technical data (front 3/4, car on the left)
   { az: 0.95, el: 0.2,  dist: 10.6, t: [0, 0.62, 0],    shift: 0.16,  spin: 1, hood: 0, drive: 0 },  // configure
 ];
-const BAY_VIEW = { az: 0.38, el: 0.72, dist: 4.9, t: [0, 0.8, 1.45] };
+const BAY_VIEW = CAR.bayView;
+const LID = CAR.lid; // the lid that opens: bonnet (M4) or tailgate (X5)
+(CAR.views || []).forEach((o, i) => { if (o) VIEWS[i] = { ...VIEWS[i], ...o }; });
 const viewSections = $$('[data-view]');
 let sectionTops = [];
 const measure = () => { sectionTops = viewSections.map(s => s.offsetTop); };
@@ -1108,7 +1034,7 @@ function setHover(key) {
   hoverMeshes.forEach(m => m.layers.enable(2));
   if (key) {
     $('b', tipEl).textContent = INFO[key].name;
-    $('#tipHint').textContent = key === 'hood' ? (hoodWanted ? 'Click to close the bonnet' : 'Click to open the bonnet') : 'Click to inspect';
+    $('#tipHint').textContent = key === LID.part ? (hoodWanted ? LID.close : LID.open) : 'Click to inspect';
   }
   tipEl.classList.toggle('on', !!key);
 }
@@ -1130,7 +1056,7 @@ addEventListener('click', e => {
   if (explode > 0.05) return;
   const hit = pick(new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -((e.clientY / innerHeight) * 2 - 1)));
   if (!hit) return;
-  if (hit.key === 'hood') setHood(!hoodWanted);
+  if (hit.key === LID.part) setHood(!hoodWanted);
   else setFocus(hit.key);
 });
 addEventListener('keydown', e => {
@@ -1164,12 +1090,7 @@ showScene.add(stageGlow);
 const showLabelsEl = $('#showLabels');
 
 // what pops out for each part; several items = laid out side by side facing you, each labelled
-const CORNER = [
-  ['tyre0', 'Tyre', '275/35 R19 performance'],
-  ['wheel0', 'Forged M wheel', '19-inch Y-spoke'],
-  ['disc0', 'Carbon-ceramic disc', '400 mm, cross-drilled'],
-  ['brake0', '6-piston caliper', 'Fixed, lightweight aluminium'],
-];
+const CORNER = CAR.corner || [];
 function showItems(key) {
   const G = k => PARTGROUPS[k];
   if (key === 'brakes' || key === 'wheels') return CORNER.map(([k, a, b]) => ({ groups: [G(k)], label: [a, b] }));
@@ -1358,7 +1279,7 @@ function setFocus(key) {
   const photo = PHOTOS[key], cr = CREDITS[photo];
   $('#inPhotoWrap').hidden = !photo;
   if (photo) {
-    $('#inPhoto').src = `images/${photo}.jpg`;
+    $('#inPhoto').src = `cars/${CAR.id}/images/${photo}.jpg`;
     $('#inCredit').innerHTML = `Photo: ${cr[0]}, <a href="https://commons.wikimedia.org/wiki/${cr[2]}" target="_blank" rel="noopener">${cr[1]}</a> · Wikimedia Commons`;
   }
   $('#inCount').textContent = TOUR.includes(key) ? `${TOUR.indexOf(key) + 1} / ${TOUR.length}` : '';
@@ -1390,7 +1311,7 @@ function setHood(on) {
   hoodWanted = on;
   if (on) { setExploded(false); }
   $('#hoodBtn').classList.toggle('on', on);
-  $('#hoodText').textContent = on ? 'Close bonnet' : 'Open bonnet';
+  $('#hoodText').textContent = on ? LID.close : LID.open;
 }
 function setExploded(on) {
   btnTarget = on ? 1 : 0;
@@ -1407,6 +1328,7 @@ function setDrive(on) {
   $('#enginePanel').hidden = !on;
 }
 $('#hoodBtn').addEventListener('click', () => setHood(!hoodWanted));
+if (!PARTGROUPS) $('#hoodBtn').hidden = true;
 $('#explodeBtn').addEventListener('click', () => setExploded(btnTarget === 0));
 $('#driveBtn').addEventListener('click', () => setDrive(!driveOn));
 $('#liveryBtn').addEventListener('click', () => {
@@ -1441,19 +1363,8 @@ $$('[data-paint]').forEach(b => b.addEventListener('click', () => applyPaint(b.d
 /* ============================================================
    Configurator: seat upholstery and brake calipers (also offered on the part cards)
    ============================================================ */
-const SEAT_COLORS = {
-  black:   { name: 'Black Merino', color: '#3b3c40' },
-  orange:  { name: 'Kyalami Orange / Black', color: '#d46a2c' },
-  blue:    { name: 'Yas Marina Blue / Black', color: '#2f6fd6' },
-  silver:  { name: 'Silverstone / Black', color: '#cfc8b8' },
-  red:     { name: 'Fiona Red / Black', color: '#9b2230' },
-};
-const CALIPER_COLORS = {
-  gold:  { name: 'Gold (M Carbon ceramic)', color: '#b98a3e' },
-  blue:  { name: 'M Blue', color: '#1f5fd6' },
-  red:   { name: 'M Red', color: '#c4161c' },
-  black: { name: 'High-gloss black', color: '#151515' },
-};
+const SEAT_COLORS = CAR.seatColors;
+const CALIPER_COLORS = CAR.caliperColors;
 let seatChoice = 'orange', caliperChoice = 'gold';
 const seatMats = [];
 let matCaliper = null;
@@ -1462,11 +1373,16 @@ function prepareConfigMaterials() {
   // (material names can be merged by compression, so go by part, not by name)
   const carbonShell = new THREE.MeshPhysicalMaterial({ color: '#141518', metalness: 0.35, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.06 });
   groupsFor('seats').forEach(pg => pg.meshes.forEach(m => {
-    if (/white4/.test(m.material.name)) { m.material = carbonShell; return; } // the shells: M Carbon, gloss carbon finish
+    if (CAR.seatShell && m.material.name.includes(CAR.seatShell)) { m.material = carbonShell; return; } // M Carbon shells: gloss carbon
+    if (/none|Plastic|Chrome|Alumin/.test(m.material.name)) return; // only the upholstery is tinted
     m.material = m.material.clone();
     seatMats.push(m.material);
   }));
-  for (const m of matCache.values()) if (/Caliper/.test(m.name)) matCaliper = m;
+  for (let i = 0; i < 4; i++) (PARTGROUPS['brake' + i] ? PARTGROUPS['brake' + i].meshes : []).forEach(m => {
+    if (!m.material.name.includes(CAR.caliperMaterial)) return;
+    matCaliper = matCaliper || m.material.clone();
+    m.material = matCaliper;
+  });
 }
 function applySeat(k) {
   seatChoice = k;
@@ -1484,10 +1400,7 @@ const seatListEl = $('#seatList'), caliperListEl = $('#caliperList');
 Object.entries(SEAT_COLORS).forEach(([k, s]) => seatListEl.insertAdjacentHTML('beforeend', `<button data-seat="${k}" style="--c:${s.color}"><i></i>${s.name}</button>`));
 Object.entries(CALIPER_COLORS).forEach(([k, s]) => caliperListEl.insertAdjacentHTML('beforeend', `<button data-caliper="${k}" style="--c:${s.color}"><i></i>${s.name}</button>`));
 // configurator camera: choosing calipers flies to the front wheel, choosing seats opens the door and looks in
-const CFG_VIEWS = {
-  caliper: { az: 1.22, el: 0.08, dist: 2.6, t: [0.85, 0.4, 1.53] },
-  seat:    { az: 1.15, el: 0.38, dist: 3.1, t: [0.25, 0.88, -0.25] },
-};
+const CFG_VIEWS = CAR.cfgViews;
 let cfgKey = null, cfgAmt = 0, cfgScroll = 0;
 function setCfgView(k) { cfgKey = k; cfgScroll = scrollY; }
 document.addEventListener('click', e => {
@@ -1514,7 +1427,7 @@ function cardOptions(key) {
    limiter; overrun crackle from the Sport exhaust.
    ============================================================ */
 const engineSound = {
-  ctx: null, on: false, rpm: 0, rev: false, sport: true, plus: false, load: 0, lastRpm: 0, lastPop: 0, blipUntil: 0, catchAt: 0,
+  ctx: null, on: false, rpm: 0, rev: false, sport: CAR.sound.sport, plus: false, load: 0, lastRpm: 0, lastPop: 0, blipUntil: 0, catchAt: 0,
   init() {
     const ctx = this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     const bus = this.bus = ctx.createDynamicsCompressor();
@@ -1635,14 +1548,14 @@ const engineSound = {
       const since = now - this.catchAt;
       const idle = since < 0.4 ? 2600 : since < 4.5 ? 1450 : since < 6.5 ? lerp(1450, 880, (since - 4.5) / 2) : 880;
       let target = 0;
-      if (this.on) target = !running ? 170 : (this.rev || blip) ? 7150 : idle + Math.sin(now * 2.3) * 30;
+      if (this.on) target = !running ? 170 : (this.rev || blip) ? REDLINE - 50 : idle + Math.sin(now * 2.3) * 30;
       const rising = target > this.rpm;
       this.rpm += (target - this.rpm) * Math.min(1, dt * (rising ? (blip ? 10 : 3.4) : 2.1));
-      if (target === 7150 && this.rpm > 6950) this.rpm = 6950 + Math.random() * 250; // limiter bounce
+      if (target === REDLINE - 50 && this.rpm > REDLINE - 250) this.rpm = REDLINE - 250 + Math.random() * 250; // limiter bounce
       this.load = damp(this.load, running && (this.rev || blip) ? 1 : 0, 12, dt);
     }
     if (running && prevLoad > 0.7 && this.load < 0.5 && this.rpm > 3200) this.flutter();
-    const rpm = this.rpm, f = Math.max(1, rpm / 20);
+    const rpm = this.rpm, f = Math.max(1, rpm * CAR.sound.cylinders / 120); // firing frequency
     this.harm.forEach(h => this.to(h.o.frequency, f * h.m));
     this.to(this.pulse.frequency, f);
     this.to(this.bp.frequency, 300 + rpm * 0.35);
@@ -1656,7 +1569,7 @@ const engineSound = {
     this.to(this.intakeLp.frequency, 300 + rpm * 0.12);
     this.to(this.intakeGain.gain, running ? this.load * (0.05 + rpm / 7200 * 0.18) : 0);
     // overrun crackle when lifting off from high revs (Sport exhaust only)
-    if (running && this.sport && this.load < 0.3 && rpm > 2400 && rpm < this.lastRpm && now - this.lastPop > 0.035 + Math.random() * (this.plus ? 0.07 : 0.13)) {
+    if (running && CAR.sound.crackle && this.sport && this.load < 0.3 && rpm > 2400 && rpm < this.lastRpm && now - this.lastPop > 0.035 + Math.random() * (this.plus ? 0.07 : 0.13)) {
       this.pop(Math.random() < 0.15); this.lastPop = now;
     }
     this.lastRpm = rpm;
@@ -1668,29 +1581,16 @@ const engineSound = {
    moves in through the doorway to the driver's seat, then the door closes.
    Mouse = look around. Hotspots: steering wheel, cluster, screen, gear selector, seats.
    ============================================================ */
-const EYE = V3(0.37, 1.12, -0.24), DOORWAY = V3(1.8, 1.15, 0.0), CABIN_LOOK = V3(0.15, 0.95, 0.2);
+const EYE = V3(...CAR.cabin.eye), DOORWAY = V3(...CAR.cabin.doorway), CABIN_LOOK = V3(...CAR.cabin.look);
 let insideWanted = false, insideAmt = 0, doorOpen = 0, insideScroll = 0;
 const cabinLight = new THREE.PointLight(0xfff0dc, 0, 2.4, 1.6);
-cabinLight.position.set(0.1, 1.25, -0.05);
+cabinLight.position.set(...CAR.cabin.light);
 car.add(cabinLight);
 cabinLight.layers.enable(2);
-const CABIN_INFO = {
-  mwheel:  { kicker: 'Interior', name: 'M steering wheel', photo: 'interior5',
-    text: 'Thick-rimmed leather wheel with carbon shift paddles. The red M1 and M2 buttons recall two complete set-ups you save in the M Setup menu: engine, chassis, steering, brakes, gearshift and traction.',
-    made: 'Walknappa leather rim, carbon-fibre paddles, aluminium spokes', specs: [['Buttons', 'M1 · M2 · M Setup'], ['Paddles', 'Carbon fibre'], ['Rim', 'Walknappa leather'], ['Heated', 'Yes']] },
-  cluster: { kicker: 'Interior', name: 'Digital instrument cluster', photo: 'interior12',
-    text: 'A 12.3-inch display behind the wheel with M-specific layouts: a sweeping rev counter, a shift light that turns red at the limiter, lap timer and g-meter. Click to see live data.',
-    made: 'Curved glass, high-contrast LCD', specs: [['Size', '12.3 in'], ['Modes', 'Road · Sport · Track'], ['Shift lights', 'Yes'], ['Lap timer', 'Yes']] },
-  display: { kicker: 'Interior', name: 'Control display & M Setup', photo: 'interior14',
-    text: 'The central touchscreen with iDrive controller. The M Setup menu lets you tune the car. Click to open the screen and try it.',
-    made: 'Curved glass, touch + iDrive controller + voice', specs: [['Controls', 'Touch · iDrive · voice'], ['M Setup', '7 settings'], ['Navigation', 'Yes'], ['Apple / Android', 'Wireless']] },
-  gear:    { kicker: 'Interior', name: 'Gear selector & Drivelogic', photo: 'interior14',
-    text: 'The M gear selector for the 8-speed M Steptronic. The Drivelogic switch sets how fast and how firmly the gearbox changes, in three stages.',
-    made: 'Leather, carbon fibre, aluminium', specs: [['Gears', '8'], ['Drivelogic', '3 stages'], ['Mode', 'D / S / manual'], ['Launch control', 'Yes']] },
-};
+const CABIN_INFO = CAR.cabinInfo || {};
 Object.assign(INFO, CABIN_INFO);
 Object.entries(CABIN_INFO).forEach(([k, c]) => { PHOTOS[k] = c.photo; });
-const CABIN_SPOTS = [['mwheel', [0.37, 0.93, 0.4]], ['cluster', [0.37, 1.02, 0.63]], ['display', [0.03, 1.02, 0.58]], ['gear', [0.02, 0.74, 0.28]], ['seats', [-0.37, 1.05, -0.32]]];
+const CABIN_SPOTS = CAR.cabinSpots || [];
 const cabinSpotsEl = $('#cabinSpots');
 const cabinSpotEls = CABIN_SPOTS.map(([k, at]) => {
   const el = document.createElement('button');
@@ -1734,15 +1634,7 @@ function updateDoorAndCabin(dt) {
 
 /* In-car screen */
 const idriveEl = $('#idrive');
-const SETUP = [
-  ['Engine', ['Efficient', 'Sport', 'Sport Plus'], 1],
-  ['Chassis', ['Comfort', 'Sport', 'Sport Plus'], 0],
-  ['Steering', ['Comfort', 'Sport'], 0],
-  ['Brakes', ['Comfort', 'Sport'], 0],
-  ['Gearshift (Drivelogic)', ['1', '2', '3'], 1],
-  ['DSC', ['On', 'M Dynamic', 'Off'], 0],
-  ['Exhaust sound', ['Comfort', 'Sport'], 1],
-];
+const SETUP = CAR.setup;
 $('#setupGrid').innerHTML = SETUP.map(([name, opts, on], r) =>
   `<div class="setup-row"><span>${name}</span><div class="seg" data-row="${r}">${opts.map((o, i) => `<button class="${i === on ? 'on' : ''}" data-i="${i}">${o}</button>`).join('')}</div></div>`).join('')
   + '<div class="setup-row"><span>M Traction Control · <b id="tcVal">5</b></span><input type="range" min="1" max="10" value="5" id="tcRange"></div>';
@@ -1779,7 +1671,7 @@ function updateIdrive() {
   $('#liveSpeed').textContent = sim.on ? Math.round(sim.v * 3.6) : moving ? Math.round((rpm - 900) / 6100 * 118) : 0;
   $('#liveGear').textContent = !running ? 'P' : sim.on ? sim.gear : moving ? '2' : 'N';
   $('#liveBoost').textContent = `${(clamp((rpm - 1500) / 3500, 0, 1) * 1.7 * engineSound.load).toFixed(1)} bar`;
-  $('#livePower').textContent = `${Math.round(510 * clamp(rpm / 6250, 0, 1) * (0.15 + 0.85 * engineSound.load))} PS`;
+  $('#livePower').textContent = `${Math.round(CAR.drive.powerPS * clamp(rpm / CAR.drive.peakRpm, 0, 1) * (0.15 + 0.85 * engineSound.load))} PS`;
 }
 
 /* Engine buttons */
@@ -1826,9 +1718,9 @@ addEventListener('pointerup', () => {
 let lightsOn = false;
 const headMats = [];
 const lampGlows = [];
-const makeLampGlows = () => [0.66, -0.66].map(x => {
+const makeLampGlows = () => CAR.lamps.map(([x, y, z]) => {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowMap, color: '#dcecff', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
-  sp.position.set(x, 0.68, 2.2);
+  sp.position.set(x, y, z);
   sp.scale.setScalar(0.55);
   return sp;
 });
@@ -1872,7 +1764,7 @@ const plateTex = canvasTexture(1040, 220, (c, w, h) => {
     c.fillStyle = col; c.fillRect(0, 0, 16, 70); c.restore();
   });
   c.fillStyle = '#ffffff'; c.font = '700 34px Inter, Arial, sans-serif'; c.textAlign = 'center';
-  c.fillText('M4', 69, 180);
+  c.fillText(CAR.plates.badge || CAR.short, 69, 180);
   c.fillStyle = '#111'; c.textBaseline = 'middle';
   let size = 150;
   do { c.font = `800 ${size}px Archivo, "Arial Black", sans-serif`; size -= 4; } while (c.measureText(PLATE_TEXT).width > w - 190);
@@ -1881,7 +1773,11 @@ const plateTex = canvasTexture(1040, 220, (c, w, h) => {
 function addPlates() {
   const mat = new THREE.MeshStandardMaterial({ map: plateTex, roughness: 0.35, metalness: 0.1 });
   const geo = new THREE.PlaneGeometry(0.52, 0.11);
-  [['front', [0, 0.305, 2.405], 0, -0.1], ['rear', [0, 0.79, -2.3], Math.PI, 0]].forEach(([key, at, ry, rx]) => {
+  if (CAR.plates.material) { // the model has its own plates: just give them our plate texture
+    for (const pg of Object.values(PARTGROUPS)) pg.meshes.forEach(m => { if (m.material.name.includes(CAR.plates.material)) m.material = mat; });
+    return;
+  }
+  (CAR.plates.place || []).forEach(([key, at, ry, rx]) => {
     const pg = PARTGROUPS[key];
     const plate = new THREE.Mesh(geo, mat);
     plate.position.set(...at).sub(pg ? pg.pivot : V3());
@@ -1899,10 +1795,13 @@ const bookEl = $('#book'), bookForm = $('#bookForm');
 const pad = n => String(n).padStart(2, '0');
 const isoDay = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 function openBook() {
+  $$('[data-book-label]').forEach(el => { el.textContent = KIOSK ? 'Talk to a sales advisor' : 'Book a test drive'; });
+  $('#bookIntro').textContent = KIOSK ? 'Leave your details and an advisor will come to you, or call you back to book a drive.' : "Tell us when suits you and we'll confirm your drive by email.";
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
   const max = new Date(); max.setMonth(max.getMonth() + 3);
   bookForm.date.min = isoDay(tomorrow); bookForm.date.max = isoDay(max);
-  $('#bookSpec').textContent = `Your spec: ${paint.name} · ${SEAT_COLORS[seatChoice].name} seats · ${CALIPER_COLORS[caliperChoice].name} calipers`;
+  $('#bookSpec').textContent = `Your spec: ${CAR.name} · ${paint.name} · ${SEAT_COLORS[seatChoice].name} seats · ${CALIPER_COLORS[caliperChoice].name} calipers`;
+  $('#bookNote').textContent = DEALER.name ? `Your request goes to ${DEALER.name}${DEALER.phone ? ' · ' + DEALER.phone : ''}` : '';
   bookForm.hidden = false; $('#bookDone').hidden = true;
   bookEl.hidden = false;
   setTimeout(() => bookForm.name.focus(), 50);
@@ -1929,9 +1828,23 @@ bookForm.addEventListener('submit', e => {
   }
   if (!ok) return;
   const when = new Date(bookForm.date.value + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  $('#bookDoneText').textContent = `Thanks, ${bookForm.name.value.trim().split(/\s+/)[0]}. We've received your request for ${when} and will confirm it at ${bookForm.email.value.trim()}.`;
-  bookForm.hidden = true; $('#bookDone').hidden = false;
-  bookForm.reset();
+  const first = bookForm.name.value.trim().split(/\s+/)[0], email = bookForm.email.value.trim();
+  const lead = { _subject: `${KIOSK ? 'Showroom' : 'Test drive'} request: ${CAR.name} (${when})`, _template: 'table', _captcha: 'false',
+    Name: bookForm.name.value.trim(), Email: email, Phone: bookForm.phone.value.trim(), 'Preferred date': when,
+    Car: CAR.name, Spec: $('#bookSpec').textContent.replace('Your spec: ', ''), Source: KIOSK ? 'Showroom kiosk' : 'Website' };
+  const done = sent => {
+    $('#bookDoneText').textContent = sent
+      ? `Thanks, ${first}. We've received your request for ${when} and will confirm it at ${email}.`
+      : `Thanks, ${first}. We couldn't send your request just now${DEALER.phone ? ': please call us on ' + DEALER.phone : ''}.`;
+    bookForm.hidden = true; $('#bookDone').hidden = false;
+    if (sent) bookForm.reset();
+    $('#bookSubmit').disabled = false;
+  };
+  if (!DEALER.leadsEmail || location.protocol === 'file:' && !params.has('sendtest')) { done(true); return; } // local preview: no email sent
+  $('#bookSubmit').disabled = true;
+  fetch(`https://formsubmit.co/ajax/${encodeURIComponent(DEALER.leadsEmail)}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(lead),
+  }).then(r => r.json()).then(j => done(j.success === 'true' || j.success === true)).catch(() => done(false));
 });
 
 /* ============================================================
@@ -1939,11 +1852,16 @@ bookForm.addEventListener('submit', e => {
    down a night highway. A simple longitudinal model with the real
    8-speed ratios decides speed, rpm and when to shift.
    ============================================================ */
-const GEARS = [5.0, 3.2, 2.143, 1.72, 1.314, 1.0, 0.822, 0.64]; // 8-speed M Steptronic (approx.)
-const FINAL = 3.15, TYRE_R = 0.34, MASS = 1725;
+const GEARS = CAR.drive.gears; // 8-speed M Steptronic (approx.)
+const FINAL = CAR.drive.final, TYRE_R = CAR.drive.tyreR, MASS = CAR.drive.mass, REDLINE = CAR.drive.redline;
 const RPM_PER_MS = 60 * FINAL / (TAU * TYRE_R); // engine rpm per (m/s) per unit gear ratio
 const sim = { on: false, v: 0, gear: 1, shiftT: 0, gas: false, brake: false, a: 0, rpm: 900, odo: 0 };
-const torqueAt = rpm => (rpm < 2750 ? lerp(420, 650, clamp((rpm - 1200) / 1550, 0, 1)) : rpm < 5500 ? 650 : lerp(650, 560, (rpm - 5500) / 1700));
+const torqueAt = rpm => { // piecewise-linear torque curve from the profile
+  const T = CAR.drive.torque;
+  if (rpm <= T[0][0]) return T[0][1];
+  for (let i = 1; i < T.length; i++) if (rpm <= T[i][0]) return lerp(T[i - 1][1], T[i][1], (rpm - T[i - 1][0]) / (T[i][0] - T[i - 1][0]));
+  return T[T.length - 1][1];
+};
 function setDriving(on) {
   sim.on = on;
   if (on) {
@@ -2001,13 +1919,13 @@ function updateSim(dt) {
   if (sim.brake) a -= 11;
   a -= 0.00042 * sim.v * sim.v; // aerodynamic drag
   sim.a = damp(sim.a, a, 6, dt);
-  sim.v = clamp(sim.v + a * dt, 0, 80.5); // 290 km/h
+  sim.v = clamp(sim.v + a * dt, 0, CAR.drive.topKmh / 3.6);
   sim.odo += sim.v * dt;
   // automatic shifts: up at 6,900 rpm under throttle, down when the revs drop
-  if (throttle && rpm > 6900 && sim.gear < 8 && sim.shiftT <= 0) { sim.gear++; sim.shiftT = 0.14; engineSound.shift(true); flashLeds(); }
+  if (throttle && rpm > REDLINE - 300 && sim.gear < GEARS.length && sim.shiftT <= 0) { sim.gear++; sim.shiftT = 0.14; engineSound.shift(true); flashLeds(); }
   else if (sim.gear > 1 && rpm < (throttle ? 1500 : 2000) && sim.shiftT <= 0) { sim.gear--; sim.shiftT = 0.18; engineSound.shift(false); }
   if (sim.v < 0.3 && !throttle) sim.gear = 1;
-  if (rpm > 7050) rpm = 6950 + Math.random() * 200; // limiter in top gear
+  if (rpm > REDLINE - 150) rpm = REDLINE - 250 + Math.random() * 200; // limiter in top gear
   sim.rpm = rpm;
   if (sim.on) engineSound.ext = { rpm, load: throttle };
   // HUD
@@ -2017,7 +1935,7 @@ function updateSim(dt) {
   $('#hudRpm').textContent = Math.round(rpm / 50) * 50;
   $('#hudTach').style.transform = `scaleX(${clamp(rpm / 7200, 0, 1)})`;
   if (!lightsEl.classList.contains('flash')) leds.forEach((l, i) => {
-    const on = rpm > 4600 + i * 240;
+    const on = rpm > REDLINE - 2600 + i * 240;
     l.className = on ? (i < 5 ? 'g' : i < 8 ? 'y' : 'r') : '';
   });
 }
@@ -2081,9 +1999,9 @@ for (let i = 0; i < 44; i++) {
   MOVERS.push({ o: g, span: 22 * 22 });
 }
 // headlight beams lighting the road ahead (drive mode only)
-const beams = [0.62, -0.62].map(x => {
+const beams = CAR.lamps.map(([x, y, z]) => {
   const s = new THREE.SpotLight(0xe8f1ff, 0, 90, 0.42, 0.55, 1.2);
-  s.position.set(x, 0.66, 2.15);
+  s.position.set(x * 0.94, y - 0.02, z - 0.05);
   s.target.position.set(x * 0.6, 0, 30);
   car.add(s, s.target);
   return s;
@@ -2098,9 +2016,9 @@ clusterCanvas.width = 1024; clusterCanvas.height = 400;
 const cctx = clusterCanvas.getContext('2d');
 const clusterTex = new THREE.CanvasTexture(clusterCanvas);
 clusterTex.colorSpace = THREE.SRGBColorSpace;
-const clusterScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.33, 0.129), new THREE.MeshBasicMaterial({ map: clusterTex, toneMapped: false }));
-clusterScreen.position.set(0.37, 0.925, 0.588);
-clusterScreen.rotation.set(-0.12, Math.PI, 0); // faces the driver, top leaning away
+const clusterScreen = new THREE.Mesh(new THREE.PlaneGeometry(...CAR.cabin.cluster.size), new THREE.MeshBasicMaterial({ map: clusterTex, toneMapped: false }));
+clusterScreen.position.set(...CAR.cabin.cluster.pos);
+clusterScreen.rotation.set(...CAR.cabin.cluster.rot); // faces the driver, top leaning away
 car.add(clusterScreen);
 let clusterFrame = 0;
 function drawCluster() {
@@ -2132,7 +2050,7 @@ function drawCluster() {
   c.font = '600 22px Inter, sans-serif'; c.fillStyle = '#8f9bb0'; c.fillText('rpm', W - 62, H * 0.66);
   // M shift lights across the top
   for (let i = 0; i < 10; i++) {
-    const on = running && rpm > 4600 + i * 240;
+    const on = running && rpm > REDLINE - 2600 + i * 240;
     c.fillStyle = on ? (i < 5 ? '#3ddc84' : i < 8 ? '#ffcc33' : '#ff3344') : '#141a24';
     c.fillRect(W / 2 - 250 + i * 50, 22, 40, 12);
   }
@@ -2217,12 +2135,13 @@ function frame() {
   // bonnet: hinged at the windscreen, lifts from the front
   const hoodTarget = (hoodWanted || v.hood > 0.5 || (focusKey && SPOTS[focusKey])) && explode < 0.02 ? 1 : 0;
   hoodOpen = SNAP ? hoodTarget : damp(hoodOpen, hoodTarget, 2.2, dt);
-  if (PARTGROUPS.hood) PARTGROUPS.hood.inner.rotation.x = -easeInOut(clamp(hoodOpen, 0, 1)) * 0.95;
-  bayLight.intensity = hoodOpen * 3;
+  if (PARTGROUPS[LID.part]) PARTGROUPS[LID.part].inner.rotation.x = easeInOut(clamp(hoodOpen, 0, 1)) * LID.angle;
+  bayLight.intensity = LID.engineBay ? hoodOpen * 3 : 0;
   document.body.classList.toggle('bay', hoodOpen > 0.5 && v.hood < 0.5);
 
   // hover (throttled)
   updateSim(dt);
+  updateKiosk(dt);
   engineSound.update(dt);
   updateWorld(dt);
   updateDoorAndCabin(dt);
@@ -2287,7 +2206,7 @@ function frame() {
   let az = lerp(v.az, BAY_VIEW.az, bay) + (carDrag ? 0 : mouse.x * 0.14) + ev * (0.05 + Math.sin(t * 0.15) * 0.25);
   let el = lerp(v.el, BAY_VIEW.el, bay) + mouse.y * 0.06 + ev * 0.3 * (1 - v.el);
   el = clamp(el, 0.02, 1.25);
-  let dist = lerp(lerp(v.dist, BAY_VIEW.dist, bay), Math.max(v.dist, 15.5), ev) * Math.max(1, 0.85 / camera.aspect) * lerp(1, 0.9, hoverLean);
+  let dist = lerp(lerp(v.dist, BAY_VIEW.dist, bay), Math.max(v.dist, 15.5), ev) * Math.max(1, (CAR.phoneFit || 0.85) / camera.aspect) * lerp(1, 0.9, hoverLean);
   const target = tmp.copy(v.t).lerp(V3(...BAY_VIEW.t), bay).lerp(V3(0, 1.3, 0), ev);
   if (cfgKey && cfgAmt > 0.001) { // configurator close-up
     const cv = CFG_VIEWS[cfgKey], s = smooth(cfgAmt);
@@ -2378,6 +2297,78 @@ addEventListener('resize', () => {
 addEventListener('load', measure);
 
 /* ============================================================
+   Page text for this car + dealer details
+   ============================================================ */
+function fillTexts() {
+  const T = { ...CAR.copy, name: CAR.name, short: CAR.short, sub: CAR.sub, setupName: CAR.setupName, loader: CAR.name.toUpperCase(), credit: CAR.model.credit };
+  document.title = CAR.title;
+  $$('[data-car-text]').forEach(el => { const v = T[el.dataset.carText]; if (v != null) el.textContent = v; });
+  $$('[data-car-html]').forEach(el => { const v = T[el.dataset.carHtml]; if (v != null) el.innerHTML = v; });
+  $('#heroStats').innerHTML = (CAR.copy.heroStats || []).map(([b, l]) => `<div><b>${b}</b><span>${l}</span></div>`).join('');
+  $('#hoodText').textContent = LID.open;
+  document.body.classList.toggle('mcar', !!CAR.mCar);
+  document.body.classList.toggle('has-livery', !!CAR.livery);
+  const contact = [DEALER.name, DEALER.address, DEALER.phone].filter(Boolean).join(' · ');
+  $$('[data-dealer]').forEach(el => { el.textContent = el.dataset.dealer === 'contact' ? contact : (DEALER[el.dataset.dealer] || ''); });
+}
+fillTexts();
+
+/* ============================================================
+   Lineup (start screen) — every car the dealer sells
+   ============================================================ */
+const KIOSK = params.has('kiosk');
+document.body.classList.toggle('kiosk', KIOSK);
+document.body.classList.toggle('thumb', params.has('thumb'));
+const carUrl = id => `?car=${id}${KIOSK ? '&kiosk' : ''}`;
+$('#lineupGrid').innerHTML = LINEUP.map(c => `<button class="lcard${c.id === CAR.id ? ' current' : ''}" data-car="${c.id}">
+  <img src="${c.thumb}" alt="${c.name}" loading="lazy"><div><b>${c.name}</b><span>${c.tagline}</span></div>${c.id === CAR.id ? '<em>Showing now</em>' : ''}</button>`).join('');
+$('#lineupGrid').addEventListener('click', e => {
+  const b = e.target.closest('[data-car]');
+  if (!b) return;
+  if (b.dataset.car === CAR.id) setLineup(false); else location.href = carUrl(b.dataset.car);
+});
+function setLineup(on) {
+  $('#lineup').hidden = !on;
+  document.body.classList.toggle('lineup-open', on);
+  if (on) { setFocus(null); setInside(false); }
+}
+$('#modelsBtn').addEventListener('click', () => setLineup(true));
+if (window.SHOW_LINEUP || params.has('lineup')) setLineup(true); // start screen: shown at once, the car loads behind it
+$('#lineupClose').addEventListener('click', () => setLineup(false));
+$('#fullBtn').addEventListener('click', () => { if (!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); });
+
+/* Kiosk: after a minute without touches, reset and play an attract loop (spin + take apart + reassemble);
+   after three idle minutes return to the lineup. Any touch stops it. */
+let lastTouch = performance.now(), attracting = false, attractT = 0;
+const touched = () => { lastTouch = performance.now(); if (attracting) stopAttract(); };
+['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => addEventListener(ev, touched, { passive: true }));
+function startAttract() {
+  attracting = true; attractT = 0;
+  setFocus(null); closeBook(); closeIdrive(); if (sim.on) setDriving(false); setInside(false); setHood(false); setCfgView(null); setLineup(false);
+  scrollTo({ top: 0 });
+  document.body.classList.add('attracting');
+  $('#attract').hidden = false;
+}
+function stopAttract() {
+  attracting = false;
+  setExploded(false);
+  document.body.classList.remove('attracting');
+  $('#attract').hidden = true;
+}
+function updateKiosk(dt) {
+  if (!KIOSK || !ready) return;
+  const idle = (performance.now() - lastTouch) / 1000;
+  if (!attracting && idle > 60) startAttract();
+  if (attracting) {
+    attractT += dt;
+    const phase = attractT % 16; // 0-8 s spin, 8-13 s apart, 13-16 s back together
+    if (phase > 8 && phase < 13 && btnTarget === 0) setExploded(true);
+    if ((phase < 8 || phase >= 13) && btnTarget === 1) setExploded(false);
+    if (idle > 180) location.href = '?kiosk';
+  }
+}
+
+/* ============================================================
    Load the car
    ============================================================ */
 const status = s => { $('#loadStatus').textContent = s; };
@@ -2386,19 +2377,19 @@ const nextFrame = () => new Promise(r => setTimeout(r, 30));
 async function init() {
   bar(0.15); status('Unpacking the car');
   await nextFrame();
-  const bin = Uint8Array.from(atob(window.BMW_M4_GLB), c => c.charCodeAt(0));
+  const bin = Uint8Array.from(atob(window.CAR_GLB), c => c.charCodeAt(0));
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
   const gltf = await new Promise((res, rej) => loader.parse(bin.buffer, '', res, rej));
-  bar(0.55); status('Assembling 93 parts');
+  bar(0.55); status(`Assembling the ${CAR.short}`);
   await nextFrame();
   buildParts(gltf.scene);
   setupExplode();
   prepareConfigMaterials();
   prepareLights();
   addPlates();
-  applySeat(params.get('seats') in SEAT_COLORS ? params.get('seats') : 'orange');
-  applyCaliper(params.get('calipers') in CALIPER_COLORS ? params.get('calipers') : 'gold');
+  applySeat(params.get('seats') in SEAT_COLORS ? params.get('seats') : CAR.defaults.seats);
+  applyCaliper(params.get('calipers') in CALIPER_COLORS ? params.get('calipers') : CAR.defaults.calipers);
   // engine-bay hotspots sit on top of their real components
   Object.entries(SPOTS).forEach(([k, s], i) => {
     const eng = Object.keys(ENG_PART).find(e => ENG_PART[e] === k), pg = PARTGROUPS['eng:' + eng];
@@ -2420,7 +2411,7 @@ async function init() {
     $('#anatomyLabels').appendChild(el);
     return { anchor, el };
   });
-  applyPaint(PAINTS[params.get('paint')] ? params.get('paint') : 'white');
+  applyPaint(PAINTS[params.get('paint')] ? params.get('paint') : CAR.defaults.paint);
   if (params.has('nolivery')) $('#liveryBtn').click();
   renderer.compile(scene, camera);
   ready = true;
